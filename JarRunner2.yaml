@@ -1,0 +1,155 @@
+Mappings:
+  RegionMap:
+    ap-south-1:
+      AMI: ami-05194e6a
+    eu-west-3:
+      AMI: ami-680eb915
+    eu-west-2:
+      AMI: ami-22a8b046
+    eu-west-1:
+      AMI: ami-db51c2a2
+    ap-northeast-2:
+      AMI: ami-5295353c
+    ap-northeast-1:
+      AMI: ami-39e37b5f
+    sa-east-1:
+      AMI: ami-f052109c
+    ca-central-1:
+      AMI: ami-5984013d
+    ap-southeast-1:
+      AMI: ami-6755261b
+    ap-southeast-2:
+      AMI: ami-1fe21f7d
+    eu-central-1:
+      AMI: ami-0471e36b
+    us-east-1:
+      AMI: ami-74da830e
+    us-east-2:
+      AMI: ami-e782a982
+    us-west-1:
+      AMI: ami-1dacac7d
+    us-west-2:
+      AMI: ami-8f08bcf7
+Resources:
+  InputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: BucketOwnerFullControl
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: BucketOwnerFullControl
+  LambdaAuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+          PolicyName: ListJars
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+                Effect: Allow
+                Action:     s3:ListBucket
+                Resource: "*"
+                # Resource: !GetAtt
+                #   - InputBucket
+                #   - Arn
+  LambdaAuthFuction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.6
+      Handler: index.handler
+      Role: !GetAtt
+        - LambdaAuthRole
+        - Arn
+      Environment:
+        Variables:
+          JAR_LAMBDA_AUTH_CLIENT_ID: 1111
+      Code:
+        ZipFile: |
+          import boto3
+          import json
+          import os
+
+
+          def response(body, status):
+              resp = {'isBase64Encoded': False, 'statusCode': status, 'body': json.dumps(body), 'headers': {'Access-Control-Allow-Origin': '*'}}
+              return resp
+
+
+          def get_error_resp(error):
+              return response({'message': str(error)}, 500)
+
+
+          def get_unauthorized_resp(error):
+              return response({'message': str(error)}, 401)
+
+
+          def get_credentiale(body):
+              if body is not None and 'user' in body.keys() and 'password' in body.keys():
+                  return (body['user'], body['password'])
+              return (None, None)
+
+
+          def lambda_handler(event, context):
+              resp = get_error_resp('unknown error')
+              client = boto3.client('cognito-idp')
+              try:
+                  if event is not None and 'body' in event.keys():
+                      user, password = get_credentiale(json.loads(event['body']))
+                      if None in [user, password]:
+                          resp = get_error_resp('user or password not provided')
+                      else:
+                          client_id = os.getenv('JAR_LAMBDA_AUTH_CLIENT_ID')
+                          if client_id is None:
+                              resp = get_error_resp('CLIENT_ID not provided')
+                          else:
+                              resp = client.initiate_auth(ClientId=client_id, AuthFlow='USER_PASSWORD_AUTH', AuthParameters={'USERNAME': user, 'PASSWORD': password})
+                              if 'ChallengeName' in resp.keys() and resp['ChallengeName'] == 'NEW_PASSWORD_REQUIRED':
+                                  resp = response({'ChallengeName': resp['ChallengeName'], 'Session': resp['Session']}, 200)
+                              elif 'AuthenticationResult' in resp.keys():
+                                  auth_result = resp['AuthenticationResult']
+                                  if 'IdToken' in auth_result.keys() and 'ExpiresIn' in auth_result.keys() and 'AccessToken' in auth_result.keys():
+                                      resp = response({'IdToken': auth_result['IdToken'], 'ExpiresIn': auth_result['ExpiresIn'], 'AccessToken': auth_result['AccessToken']}, 200)
+                                  else:
+                                      resp = get_unauthorized_resp('cannot find IdToken or ExpiresIn')
+                              else:
+                                  resp = get_unauthorized_resp('cannot find AuthenticationResult')
+              except client.exceptions.NotAuthorizedException as e:
+                  resp = get_unauthorized_resp('not authorized, maybe invalid user or password')
+              except client.exceptions.UserNotFoundException as e:
+                  resp = get_unauthorized_resp('not authorized, maybe invalid user or password')
+              except client.exceptions.PasswordResetRequiredException as e:
+                  resp = response({'passwordResetRequired': True}, 200)
+              except Exception as e:
+                  resp = get_error_resp(e)
+              return resp
+  # Ec2Instance:
+  #   Type: AWS::EC2::Instance
+  #   Properties:
+  #     InstanceType: t2.micro
+  #     ImageId:
+  #       Fn::FindInMap:
+  #       - RegionMap
+  #       - !Ref AWS::Region
+  #       - AMI
+  #     Tags:
+  #       - Key: "Name"
+  #         Value: "JarRunnerEC2BaseInstance"
+Outputs:
+  # ServerDns:
+  #   Value: !GetAtt
+  #     - Ec2Instance
+  #     - PublicDnsName
+  InputBucketName:
+    Value: !Ref InputBucket
+  OutputBucketName:
+    Value: !Ref OutputBucket

@@ -1,0 +1,2 @@
+aws ec2 --region eu-central-1 describe-images --filters Name=architecture,Values=x86_64 Name=image-type,Values=machine Name=owner-alias,Values=amazon Name=virtualization-type,Values=hvm Name=hypervisor,Values=xen Name=root-device-type,Values=ebs Name=block-device-mapping.volume-size,Values=8 Name=name,Values=amzn2-ami-hvm-2017.12.0.20180109-x86_64-ebs
+aws ec2 describe-regions --output text
