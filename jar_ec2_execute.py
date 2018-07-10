@@ -9,7 +9,7 @@ BUCKET_NAME_IN = 'rtp-input-jars'
 BUCKET_NAME_OUT = 'rtp-output-results'
 PREFIX_DIR = './results_'
 RESULTS_OUT = 'results_out.txt'
-RESULTS_ERR = 'results_err.txt'
+RESULTS_ERR = 'results_diag.txt'
 
 
 def extract_jar_name(body):

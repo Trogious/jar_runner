@@ -1,22 +1,22 @@
 Resources:
-  # ScheduleQueue:
-  #   Type: AWS::SQS::Queue
-  # NotifyTopic:
-  #   Type: AWS::SNS::Topic
-  # InputBucket:
-  #   Type: AWS::S3::Bucket
-  #   Properties:
-  #     AccessControl: BucketOwnerFullControl
-  # OutputBucket:
-  #   Type: AWS::S3::Bucket
-  #   DependsOn: LambdaNotifyFuction
-  #   Properties:
-  #     AccessControl: BucketOwnerFullControl
+  ScheduleQueue:
+    Type: AWS::SQS::Queue
+  NotifyTopic:
+    Type: AWS::SNS::Topic
+  InputBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: BucketOwnerFullControl
+  OutputBucket:
+    Type: AWS::S3::Bucket
+    # DependsOn: LambdaNotifyFuction
+    Properties:
+      AccessControl: BucketOwnerFullControl
       # NotificationConfiguration:
       #   LambdaConfigurations:
       #     -
       #       Function: !GetAtt LambdaNotifyFuction.Arn
-      #       Event: "s3:ObjectCreated:*"
+      #       Event: 's3:ObjectCreated:*'
       #       Filter:
       #         S3Key:
       #           Rules:
@@ -28,7 +28,7 @@ Resources:
     Properties:
       Runtime: python3.6
       Handler: index.handler
-      Role: !GetAtt LambdaListJarsRole.Arn
+      Role: !GetAtt LambdaAuthRole.Arn
       Environment:
         Variables:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
@@ -42,7 +42,7 @@ Resources:
     Properties:
       Runtime: python3.6
       Handler: index.handler
-      Role: !GetAtt LambdaListJarsRole.Arn
+      Role: !GetAtt LambdaAuthRole.Arn
       Environment:
         Variables:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
@@ -67,142 +67,156 @@ Resources:
     Properties:
       Runtime: python3.6
       Handler: index.handler
-      Role: !GetAtt LambdaListJarsRole.Arn
+      Role: !GetAtt LambdaScheduleRole.Arn
       Code:
         ZipFile: |
           import boto3
           def handler(e,c):
             return 'ok'
-  # PermissionForS3ToInvokeMyLambda:
-  #   Type: AWS::Lambda::Permission
+  PermissionForS3ToInvokeLambdaNotify:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaNotifyFuction.Arn
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt OutputBucket.Arn
+  LambdaNotifyFuction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.6
+      Handler: index.handler
+      Role: !GetAtt LambdaNotifyRole.Arn
+      Environment:
+        Variables:
+          JAR_LAMBDA_NOTIFY_SNS_ARN: !Ref NotifyTopic
+          JAR_LAMBDA_OUTPUT_BUCKET: "x"
+      Code:
+        ZipFile: |
+          import boto3
+  # LambdaNotifyPolicy:
+  #   Type: AWS::IAM::Policy
   #   Properties:
-  #     Action: lambda:InvokeFunction
-  #     FunctionName: !GetAtt LambdaNotifyFuction.Arn
-  #     Principal: s3.amazonaws.com
-  #     SourceArn: !GetAtt OutputBucket.Arn
-  # LambdaNotifyFuction:
-  #   Type: AWS::Lambda::Function
-  #   Properties:
-  #     Runtime: python3.6
-  #     Handler: index.handler
-  #     Role: !GetAtt LambdaNotifyRole.Arn
-  #     Environment:
-  #       Variables:
-  #         JAR_LAMBDA_NOTIFY_SNS_ARN: !Ref NotifyTopic
-  #         JAR_LAMBDA_OUTPUT_BUCKET: "x"
-  #     Code:
-  #       ZipFile: |
-  #         import boto3
-  # LambdaNotifyRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  #     AssumeRolePolicyDocument:
+  #     PolicyName: S3GetResults
+  #     PolicyDocument:
   #       Version: 2012-10-17
   #       Statement:
   #         -
   #           Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - lambda.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Policies:
+  #           Action: s3:GetObject
+  #           Resource: !GetAtt OutputBucket.Arn
+  #     Roles:
   #       -
-  #         PolicyName: PublishToTopic
-  #         PolicyDocument:
-  #           Version: 2012-10-17
-  #           Statement:
-  #             -
-  #               Effect: Allow
-  #               Action: sns:Publish
-  #               Resource: !Ref NotifyTopic
-        # -
-        #   PolicyName: S3GetResults
-        #   PolicyDocument:
-        #     Version: 2012-10-17
-        #     Statement:
-        #       -
-        #         Effect: Allow
-        #         Action: s3:GetObject
-        #         Resource: !GetAtt OutputBucket.Arn
-  # Ec2ExecuteJarRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     AssumeRolePolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         -
-  #           Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - ec2.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Policies:
-  #       -
-  #         PolicyName: S3GetJar
-  #         PolicyDocument:
-  #           Version: 2012-10-17
-  #           Statement:
-  #             -
-  #               Effect: Allow
-  #               Action: s3:GetObject
-  #               Resource: !GetAtt InputBucket.Arn
-  #               Condition:
-  #                 StringEquals:
-  #                   s3:prefix:
-  #                     - jars/
-  #       -
-  #         PolicyName: S3PutResults
-  #         PolicyDocument:
-  #           Version: 2012-10-17
-  #           Statement:
-  #             -
-  #               Effect: Allow
-  #               Action: s3:PutObject
-  #               Resource: !GetAtt OutputBucket.Arn
-  # LambdaAuthRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  #     AssumeRolePolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         -
-  #           Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - lambda.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  # LambdaScheduleRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  #     AssumeRolePolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         -
-  #           Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - lambda.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Policies:
-  #       -
-  #         PolicyName: PassRole
-  #         PolicyDocument:
-  #           Version: 2012-10-17
-  #           Statement:
-  #             -
-  #               Effect: Allow
-  #               Action: iam:PassRole
-  #               Resource: !GetAtt Ec2ExecuteJarRole.Arn
+  #         Ref: LambdaNotifyRole
+  LambdaNotifyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: PublishToTopic
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: sns:Publish
+                Resource: !Ref NotifyTopic
+        -
+          PolicyName: S3GetResults
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !GetAtt OutputBucket.Arn
+  Ec2ExecuteJarRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: S3GetJar
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !GetAtt InputBucket.Arn
+                Condition:
+                  StringEquals:
+                    s3:prefix:
+                      - jars/
+        -
+          PolicyName: S3PutResults
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:PutObject
+                Resource: !GetAtt OutputBucket.Arn
+  LambdaAuthRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+  LambdaScheduleRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: PassRole
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: iam:PassRole
+                Resource: !GetAtt Ec2ExecuteJarRole.Arn
   LambdaListJarsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -218,36 +232,35 @@ Resources:
                 - lambda.amazonaws.com
             Action:
               - sts:AssumeRole
-      # Policies:
-      #   -
-      #     PolicyName: ListJars
-      #     PolicyDocument:
-      #       Version: 2012-10-17
-      #       Statement:
-      #         -
-      #           Effect: Allow
-      #           Action: s3:ListBucket
-      #           Resource: !GetAtt InputBucket.Arn
-      #           Condition:
-      #             StringEquals:
-      #               s3:prefix:
-      #                 - jars/
+      Policies:
+        -
+          PolicyName: ListJars
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt InputBucket.Arn
+                Condition:
+                  StringEquals:
+                    s3:prefix:
+                      - jars/
   JarApi:
     Type: AWS::ApiGateway::RestApi
-    # DependsOn: JarCognitoUserPool
     Properties:
       Body:
         swagger: 2.0
         info:
           version: 1.0
-          title: jar_runner_api
-          description: Rest API for jarrunner
+          title: !Sub jar_runner_api ${AWS::StackName}
+          description: !Sub Rest API for ${AWS::StackName}
         # host: ejdx39j2jj.execute-api.eu-central-1.amazonaws.com
-        basePath: "/dev"
+        basePath: /dev
         schemes:
         - https
         paths:
-          "/auth":
+          /auth:
             post:
               produces:
               - application/json
@@ -307,7 +320,7 @@ Resources:
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
                       application/json: 'null'
-          "/newpass":
+          /newpass:
             post:
               produces:
               - application/json
@@ -367,7 +380,7 @@ Resources:
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
                       application/json: 'null'
-          "/list-jars":
+          /list-jars:
             get:
               produces:
               - application/json
@@ -510,7 +523,7 @@ Resources:
     Type: AWS::ApiGateway::Deployment
     Properties:
       RestApiId: !Ref JarApi
-      Description: JarApi deployment
+      Description: !Sub JarApi deployment for ${AWS::StackName}
       StageName: dev
   JarCognitoUserPool:
     Type: AWS::Cognito::UserPool
@@ -518,7 +531,6 @@ Resources:
       UserPoolName: jar_cognito_user_pool
   JarUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
-    Description: App Client for JarApi
     Properties:
       GenerateSecret: false
       UserPoolId: !Ref JarCognitoUserPool

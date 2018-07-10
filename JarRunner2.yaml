@@ -31,17 +31,22 @@ Mappings:
     us-west-2:
       AMI: ami-8f08bcf7
 Resources:
-  InputBucket:
-    Type: AWS::S3::Bucket
+  AMICreate:
+    Type: AWS::CloudFormation::WaitCondition
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT10M
+  JarExecutorAMI:
+    Type: Custom::AMI
+    DependsOn: AMICreate
     Properties:
-      AccessControl: BucketOwnerFullControl
-  OutputBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      AccessControl: BucketOwnerFullControl
-  LambdaAuthRole:
+      ServiceToken: !GetAtt LambdaAMIFuction.Arn
+      InstanceId: !Ref AMICreatorInstance
+  LambdaAMIRole:
     Type: AWS::IAM::Role
     Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
@@ -52,104 +57,133 @@ Resources:
             Action:
               - sts:AssumeRole
       Policies:
-          PolicyName: ListJars
+        -
+          PolicyName: ManageAMICreatorInstance
           PolicyDocument:
             Version: 2012-10-17
             Statement:
+              -
                 Effect: Allow
-                Action:     s3:ListBucket
-                Resource: "*"
-                # Resource: !GetAtt
-                #   - InputBucket
-                #   - Arn
-  LambdaAuthFuction:
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeImages
+                  - ec2:CreateImage
+                  - ec2:DeregisterImage
+                  - ec2:DescribeSnapshots
+                  - ec2:DeleteSnapshot
+                  - ec2:CreateTags
+                  - ec2:TerminateInstances
+                Resource: '*'
+              -
+                Effect: Allow
+                Action:
+                  - ec2:TerminateInstances
+                Resource: !Join
+                  - ''
+                  - - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/
+                    - !Ref AMICreatorInstance
+  LambdaAMIFuction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
       Handler: index.handler
-      Role: !GetAtt
-        - LambdaAuthRole
-        - Arn
-      Environment:
-        Variables:
-          JAR_LAMBDA_AUTH_CLIENT_ID: 1111
+      Role: !GetAtt LambdaAMIRole.Arn
+      Timeout: 300
       Code:
-        ZipFile: |
-          import boto3
+        ZipFile: !Sub |
+          import logging
+          import cfnresponse
           import json
-          import os
+          import boto3
+          from botocore.exceptions import WaiterError
+
+          logger = logging.getLogger()
+          logger.setLevel(logging.INFO)
 
 
-          def response(body, status):
-              resp = {'isBase64Encoded': False, 'statusCode': status, 'body': json.dumps(body), 'headers': {'Access-Control-Allow-Origin': '*'}}
-              return resp
+          def handler(event, context):
+              ec2 = boto3.resource('ec2')
+              ec2client = boto3.client('ec2')
 
+              def success(data={}):
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, data, physicalId)
 
-          def get_error_resp(error):
-              return response({'message': str(error)}, 500)
+              def failed(e):
+                  cfnresponse.send(event, context, cfnresponse.FAILED, {'Data': str(e)}, physicalId)
 
-
-          def get_unauthorized_resp(error):
-              return response({'message': str(error)}, 401)
-
-
-          def get_credentiale(body):
-              if body is not None and 'user' in body.keys() and 'password' in body.keys():
-                  return (body['user'], body['password'])
-              return (None, None)
-
-
-          def lambda_handler(event, context):
-              resp = get_error_resp('unknown error')
-              client = boto3.client('cognito-idp')
+              physicalId = event['PhysicalResourceId'] if 'PhysicalResourceId' in event else None
+              logger.info('Request received: %s\n' % json.dumps(event))
               try:
-                  if event is not None and 'body' in event.keys():
-                      user, password = get_credentiale(json.loads(event['body']))
-                      if None in [user, password]:
-                          resp = get_error_resp('user or password not provided')
+                  instanceId = event['ResourceProperties']['InstanceId']
+                  if not instanceId:
+                      raise Exception('InstanceID required')
+                  if 'RequestType' not in event:
+                      success({'Data': 'No RequestType in event'})
+                  elif event['RequestType'] == 'Delete':
+                      if not physicalId.startswith('ami-'):
+                          raise Exception('Unknown PhysicalId: %s' % physicalId)
+                      images = ec2client.describe_images(ImageIds=[physicalId])
+                      for image in images['Images']:
+                          ec2.Image(image['ImageId']).deregister()
+                          snapshots = ([bdm['Ebs']['SnapshotId'] for bdm in image['BlockDeviceMappings'] if 'Ebs' in bdm and 'SnapshotId' in bdm['Ebs']])
+                          for snapshot in snapshots:
+                              ec2.Snapshot(snapshot).delete()
+                      success({'Data': 'AMIs and snapshots Deleted'})
+                  elif event['RequestType'] in ['Create', 'Update']:
+                      ami_name = 'JarRunnerAMI-${AWS::StackName}'
+                      if not physicalId:  # AMI creation has not been requested yet
+                          logger.info('Waiting for EC2 to stop: %s\n' % instanceId)
+                          instance = ec2.Instance(instanceId)
+                          instance.wait_until_stopped()  # TODO: fix to work properly on this lambda re-runs after timeout
+                          logger.info('CreatingImage: %s\n' % ami_name)
+                          image = instance.create_image(Name=ami_name)
+                          physicalId = image.image_id
                       else:
-                          client_id = os.getenv('JAR_LAMBDA_AUTH_CLIENT_ID')
-                          if client_id is None:
-                              resp = get_error_resp('CLIENT_ID not provided')
-                          else:
-                              resp = client.initiate_auth(ClientId=client_id, AuthFlow='USER_PASSWORD_AUTH', AuthParameters={'USERNAME': user, 'PASSWORD': password})
-                              if 'ChallengeName' in resp.keys() and resp['ChallengeName'] == 'NEW_PASSWORD_REQUIRED':
-                                  resp = response({'ChallengeName': resp['ChallengeName'], 'Session': resp['Session']}, 200)
-                              elif 'AuthenticationResult' in resp.keys():
-                                  auth_result = resp['AuthenticationResult']
-                                  if 'IdToken' in auth_result.keys() and 'ExpiresIn' in auth_result.keys() and 'AccessToken' in auth_result.keys():
-                                      resp = response({'IdToken': auth_result['IdToken'], 'ExpiresIn': auth_result['ExpiresIn'], 'AccessToken': auth_result['AccessToken']}, 200)
-                                  else:
-                                      resp = get_unauthorized_resp('cannot find IdToken or ExpiresIn')
-                              else:
-                                  resp = get_unauthorized_resp('cannot find AuthenticationResult')
-              except client.exceptions.NotAuthorizedException as e:
-                  resp = get_unauthorized_resp('not authorized, maybe invalid user or password')
-              except client.exceptions.UserNotFoundException as e:
-                  resp = get_unauthorized_resp('not authorized, maybe invalid user or password')
-              except client.exceptions.PasswordResetRequiredException as e:
-                  resp = response({'passwordResetRequired': True}, 200)
+                          logger.info('Continuing in awaiting image available: %s\n' % physicalId)
+                      waiter = ec2client.get_waiter('image_available')
+                      try:
+                          waiter.wait(ImageIds=[physicalId], WaiterConfig={'Delay': 30, 'MaxAttempts': 9})
+                      except WaiterError as e:
+                          # Request the same event but set PhysicalResourceId so that the AMI is not created again
+                          event['PhysicalResourceId'] = physicalId
+                          logger.info('Timeout reached, continuing function: %s\n' % json.dumps(event))
+                          lambda_client = boto3.client('lambda')
+                          lambda_client.invoke(FunctionName=context.invoked_function_arn, InvocationType='Event', Payload=json.dumps(event))
+                          return
+                      images = ec2client.describe_images(ImageIds=[physicalId])
+                      for image in images['Images']:
+                          snapshots = ([bdm['Ebs']['SnapshotId'] for bdm in image['BlockDeviceMappings'] if 'Ebs' in bdm and 'SnapshotId' in bdm['Ebs']])
+                          for snapshot in snapshots:
+                              ec2.Snapshot(snapshot).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerSnapshot-${AWS::StackName}'}])
+                      ec2client.terminate_instances(InstanceIds=[instanceId])
+                      success({'Data': 'AMI created: %s' % ami_name})
+                  else:
+                      success({'Data': 'Unknown RequestType'})
               except Exception as e:
-                  resp = get_error_resp(e)
-              return resp
-  # Ec2Instance:
-  #   Type: AWS::EC2::Instance
-  #   Properties:
-  #     InstanceType: t2.micro
-  #     ImageId:
-  #       Fn::FindInMap:
-  #       - RegionMap
-  #       - !Ref AWS::Region
-  #       - AMI
-  #     Tags:
-  #       - Key: "Name"
-  #         Value: "JarRunnerEC2BaseInstance"
+                  failed(e)
+  AMICreatorInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId:
+        Fn::FindInMap:
+        - RegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-CreateAMIInstance
+      UserData:
+        'Fn::Base64': !Sub |
+          #!/bin/sh -
+          yum install -y python3 java-1.8.0-openjdk.x86_64
+          pip3 install boto3
+          /opt/aws/bin/cfn-signal \
+            -e $? \
+            --stack ${AWS::StackName} \
+            --region ${AWS::Region} \
+            --resource AMICreate
+          /usr/sbin/poweroff
 Outputs:
-  # ServerDns:
-  #   Value: !GetAtt
-  #     - Ec2Instance
-  #     - PublicDnsName
-  InputBucketName:
-    Value: !Ref InputBucket
-  OutputBucketName:
-    Value: !Ref OutputBucket
+  JarExecutorAMI:
+    Value: !Ref JarExecutorAMI
