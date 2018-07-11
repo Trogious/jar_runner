@@ -1,3 +1,35 @@
+Mappings:
+  RegionMap:
+    ap-south-1:
+      AMI: ami-05194e6a
+    eu-west-3:
+      AMI: ami-680eb915
+    eu-west-2:
+      AMI: ami-22a8b046
+    eu-west-1:
+      AMI: ami-db51c2a2
+    ap-northeast-2:
+      AMI: ami-5295353c
+    ap-northeast-1:
+      AMI: ami-39e37b5f
+    sa-east-1:
+      AMI: ami-f052109c
+    ca-central-1:
+      AMI: ami-5984013d
+    ap-southeast-1:
+      AMI: ami-6755261b
+    ap-southeast-2:
+      AMI: ami-1fe21f7d
+    eu-central-1:
+      AMI: ami-0471e36b
+    us-east-1:
+      AMI: ami-74da830e
+    us-east-2:
+      AMI: ami-e782a982
+    us-west-1:
+      AMI: ami-1dacac7d
+    us-west-2:
+      AMI: ami-8f08bcf7
 Resources:
   ScheduleQueue:
     Type: AWS::SQS::Queue
@@ -118,7 +150,7 @@ Resources:
                 Effect: Allow
                 Action: s3:GetObject
                 Resource: !GetAtt OutputBucket.Arn
-  Ec2ExecuteJarRole:
+  JarExecutorRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -193,7 +225,7 @@ Resources:
               -
                 Effect: Allow
                 Action: iam:PassRole
-                Resource: !GetAtt Ec2ExecuteJarRole.Arn
+                Resource: !GetAtt JarExecutorRole.Arn
   LambdaListJarsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -513,41 +545,81 @@ Resources:
       UserPoolId: !Ref JarCognitoUserPool
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
-  # LambdaWTFRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  #     AssumeRolePolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         -
-  #           Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - lambda.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Policies:
-  #       -
-  #         PolicyName: WriteToQueue
-  #         PolicyDocument:
-  #           Version: 2012-10-17
-  #           Statement:
-  #             -
-  #               Effect: Allow
-  #               Action:
-  #                 - sqs:GetQueueUrl
-  #                 - sqs:SendMessage
-  #               Resource: !GetAtt ScheduleQueue.Arn
+  AMICreate:
+    Type: AWS::CloudFormation::WaitCondition
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT10M
+  JarExecutorAMI:
+    Type: Custom::AMI
+    DependsOn: AMICreate
+    Properties:
+      ServiceToken: !GetAtt LambdaAMIFuction.Arn
+      InstanceId: !Ref AMICreatorInstance
+  LambdaAMIRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: ManageAMICreatorInstance
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeImages
+                  - ec2:CreateImage
+                  - ec2:DeregisterImage
+                  - ec2:DescribeSnapshots
+                  - ec2:DeleteSnapshot
+                  - ec2:CreateTags
+                Resource: '*'
+              -
+                Effect: Allow
+                Action:
+                  - ec2:TerminateInstances
+                Resource: !Join
+                  - ''
+                  - - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/
+                    - !Ref AMICreatorInstance
+  LambdaAMIFuction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.6
+      Handler: index.handler
+      Role: !GetAtt LambdaAMIRole.Arn
+      Timeout: 300
+      Code:
+        ZipFile: !Sub |
+          jar_lambda_ami.py
+  AMICreatorInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId:
+        Fn::FindInMap:
+        - RegionMap
+        - !Ref AWS::Region
+        - AMI
+      Tags:
+        - Key: Name
+          Value: !Sub CreateAMIInstance-${AWS::StackName}
+      UserData:
+        'Fn::Base64': !Sub |
+          jar_boot_ami_creator.sh
 Outputs:
-  Secret:
-    Value: !GetAtt JarUserPoolClient.ClientSecret
-  ClientId:
-    Value: !Ref JarUserPoolClient
-  # InputBucketName:
-  #   Value: !Ref InputBucket
-  # OutputBucketName:
-  #   Value: !Ref OutputBucket
-  # LNotify:
-  #   Value: !GetAtt LambdaNotifyFuction.Arn
+  JarExecutorAMI:
+    Value: !Ref JarExecutorAMI

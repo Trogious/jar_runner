@@ -44,7 +44,7 @@ def execute_jar(jar):
                 else:
                     fo.write(out)
                 if err is None:
-                    print('no error')
+                    print('no diagnostic')
                 else:
                     fe.write(err)
     print('compressing')

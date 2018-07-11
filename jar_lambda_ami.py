@@ -59,6 +59,7 @@ def handler(event, context):
                 return
             images = ec2client.describe_images(ImageIds=[physicalId])
             for image in images['Images']:
+                ec2.Image(image['ImageId']).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerAMI-${AWS::StackName}'}])
                 snapshots = ([bdm['Ebs']['SnapshotId'] for bdm in image['BlockDeviceMappings'] if 'Ebs' in bdm and 'SnapshotId' in bdm['Ebs']])
                 for snapshot in snapshots:
                     ec2.Snapshot(snapshot).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerSnapshot-${AWS::StackName}'}])

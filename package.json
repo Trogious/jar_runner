@@ -1,5 +1,5 @@
 {
-  "name": "rtprunner",
+  "name": "rtp_runner",
   "version": "0.1.0",
   "private": true,
   "homepage": "./",
@@ -95,6 +95,7 @@
   },
   "devDependencies": {
     "node-sass": "^4.9.0",
-    "sass-loader": "^7.0.3"
+    "sass-loader": "^7.0.3",
+    "webpack-shell-plugin": "^0.5.0"
   }
 }
