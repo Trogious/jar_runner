@@ -1,3 +1,4 @@
+Description: Deploys the entire environment for JarRunner
 Mappings:
   RegionMap:
     ap-south-1:
@@ -31,6 +32,37 @@ Mappings:
     us-west-2:
       AMI: ami-8f08bcf7
 Resources:
+  InputBucketUsers:
+    Type: AWS::IAM::Group
+    Properties:
+      Policies:
+        -
+          PolicyName: InputBucketAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource: !GetAtt InputBucket.Arn
+  OutputBucketUsers:
+    Type: AWS::IAM::Group
+    Properties:
+      Policies:
+        -
+          PolicyName: OutputBucketAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                Resource: !GetAtt OutputBucket.Arn
   ScheduleQueue:
     Type: AWS::SQS::Queue
   NotifyTopic:
@@ -54,6 +86,12 @@ Resources:
       #             -
       #               Name: suffix
       #               Value: tgz
+  WebsiteBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      WebsiteConfiguration:
+        IndexDocument: index.html
   LambdaAuthFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -325,7 +363,7 @@ Resources:
                     statusCode: 200
                     responseParameters:
                       method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
                       application/json: 'null'
@@ -385,7 +423,7 @@ Resources:
                     statusCode: 200
                     responseParameters:
                       method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
                       application/json: 'null'
@@ -509,7 +547,7 @@ Resources:
                     statusCode: 200
                     responseParameters:
                       method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
+                      method.response.header.Access-Control-Allow-Methods: "'POST,OPTIONS'"
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
                       application/json: 'null'
@@ -556,6 +594,8 @@ Resources:
     Properties:
       ServiceToken: !GetAtt LambdaAMIFuction.Arn
       InstanceId: !Ref AMICreatorInstance
+      Code: !Sub |
+        jar_lambda_ami.py
   LambdaAMIRole:
     Type: AWS::IAM::Role
     Properties:
@@ -595,6 +635,10 @@ Resources:
                   - ''
                   - - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/
                     - !Ref AMICreatorInstance
+              -
+                Effect: Allow
+                Action: s3:PutBucketNotification
+                Resource: !GetAtt OutputBucket.Arn
   LambdaAMIFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -602,6 +646,10 @@ Resources:
       Handler: index.handler
       Role: !GetAtt LambdaAMIRole.Arn
       Timeout: 300
+      Environment:
+        Variables:
+          JAR_LAMBDA_OUTPUT_BUCKET: !Ref OutputBucket
+          JAR_LAMBDA_NOTIFY_FUNCTION_ARN: !GetAtt LambdaNotifyFuction.Arn
       Code:
         ZipFile: !Sub |
           jar_lambda_ami.py
@@ -618,8 +666,14 @@ Resources:
         - Key: Name
           Value: !Sub CreateAMIInstance-${AWS::StackName}
       UserData:
-        'Fn::Base64': !Sub |
-          jar_boot_ami_creator.sh
+        Fn::Base64: !Sub
+          - |
+            jar_boot_ami_creator.sh
+          - OutputBucket: !Ref OutputBucket
 Outputs:
-  JarExecutorAMI:
-    Value: !Ref JarExecutorAMI
+  InputBucketName:
+    Value: !Ref InputBucket
+  OutputBucketName:
+    Value: !Ref OutputBucket
+  WebsiteURL:
+    Value: !GetAtt WebsiteBucket.WebsiteURL

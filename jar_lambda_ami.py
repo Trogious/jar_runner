@@ -2,6 +2,7 @@ import logging
 import cfnresponse
 import json
 import boto3
+import os
 from botocore.exceptions import WaiterError
 
 logger = logging.getLogger()
@@ -20,6 +21,7 @@ def handler(event, context):
 
     physicalId = event['PhysicalResourceId'] if 'PhysicalResourceId' in event else None
     logger.info('Request received: %s\n' % json.dumps(event))
+    logger.info('c: %s' % event['ResourceProperties']['Code'])
     try:
         instanceId = event['ResourceProperties']['InstanceId']
         if not instanceId:
@@ -41,8 +43,8 @@ def handler(event, context):
             if not physicalId:  # AMI creation has not been requested yet
                 logger.info('Waiting for EC2 to stop: %s\n' % instanceId)
                 instance = ec2.Instance(instanceId)
-                instance.wait_until_stopped()  # TODO: fix to work properly on this lambda re-runs after timeout
-                logger.info('CreatingImage: %s\n' % ami_name)
+                instance.wait_until_stopped()  # TODO: fix re-runs
+                logger.info('Creating image: %s\n' % ami_name)
                 image = instance.create_image(Name=ami_name)
                 physicalId = image.image_id
             else:
@@ -51,7 +53,6 @@ def handler(event, context):
             try:
                 waiter.wait(ImageIds=[physicalId], WaiterConfig={'Delay': 30, 'MaxAttempts': 9})
             except WaiterError as e:
-                # Request the same event but set PhysicalResourceId so that the AMI is not created again
                 event['PhysicalResourceId'] = physicalId
                 logger.info('Timeout reached, continuing function: %s\n' % json.dumps(event))
                 lambda_client = boto3.client('lambda')
@@ -64,6 +65,11 @@ def handler(event, context):
                 for snapshot in snapshots:
                     ec2.Snapshot(snapshot).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerSnapshot-${AWS::StackName}'}])
             ec2client.terminate_instances(InstanceIds=[instanceId])
+            boto3.client('s3').put_bucket_notification_configuration(
+                Bucket=os.getenv('JAR_LAMBDA_OUTPUT_BUCKET'),
+                NotificationConfiguration={'LambdaFunctionConfigurations':
+                                           [{'LambdaFunctionArn': os.getenv('JAR_LAMBDA_NOTIFY_FUNCTION_ARN'),
+                                            'Events': ['s3:ObjectCreated:Post', 's3:ObjectCreated:Put']}]})
             success({'Data': 'AMI created: %s' % ami_name})
         else:
             success({'Data': 'Unknown RequestType'})
