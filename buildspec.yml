@@ -27,6 +27,7 @@ phases:
 artifacts:
   files:
     - jar_runner-website-latest.zip
+    - cfnresponse.py
   #discard-paths: yes
   #base-directory: location
 #cache:

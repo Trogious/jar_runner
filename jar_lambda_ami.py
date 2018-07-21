@@ -17,7 +17,7 @@ def handler(event, context):
         cfnresponse.send(event, context, cfnresponse.SUCCESS, data, physicalId)
 
     def failed(e):
-        cfnresponse.send(event, context, cfnresponse.FAILED, {'Data': str(e)}, physicalId)
+        cfnresponse.send(event, context, cfnresponse.FAILED, {'Msg': str(e)}, physicalId)
 
     physicalId = event['PhysicalResourceId'] if 'PhysicalResourceId' in event else None
     logger.info('Request received: %s\n' % json.dumps(event))
@@ -26,7 +26,7 @@ def handler(event, context):
         if not instanceId:
             raise Exception('InstanceID required')
         if 'RequestType' not in event:
-            success({'Data': 'No RequestType in event'})
+            success({'Msg': 'No RequestType in event'})
         elif event['RequestType'] == 'Delete':
             if not physicalId.startswith('ami-'):
                 raise Exception('Unknown PhysicalId: %s' % physicalId)
@@ -36,7 +36,7 @@ def handler(event, context):
                 snapshots = ([bdm['Ebs']['SnapshotId'] for bdm in image['BlockDeviceMappings'] if 'Ebs' in bdm and 'SnapshotId' in bdm['Ebs']])
                 for snapshot in snapshots:
                     ec2.Snapshot(snapshot).delete()
-            success({'Data': 'AMIs and snapshots Deleted'})
+            success({'Msg': 'AMIs and snapshots Deleted'})
         elif event['RequestType'] in ['Create', 'Update']:
             stack_name = os.getenv('JAR_LAMBDA_STACK_NAME', '')
             ami_name = 'JarRunnerAMI-' + stack_name
@@ -70,8 +70,8 @@ def handler(event, context):
                 NotificationConfiguration={'LambdaFunctionConfigurations':
                                            [{'LambdaFunctionArn': os.getenv('JAR_LAMBDA_NOTIFY_FUNCTION_ARN'),
                                             'Events': ['s3:ObjectCreated:Post', 's3:ObjectCreated:Put']}]})
-            success({'Data': 'AMI created: %s' % ami_name})
+            success({'Msg': 'AMI created: %s' % ami_name})
         else:
-            success({'Data': 'Unknown RequestType'})
+            success({'Msg': 'Unknown RequestType'})
     except Exception as e:
         failed(e)

@@ -83,7 +83,7 @@ Resources:
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Properties:
-      AccessControl: PublicRead
+      AccessControl: BucketOwnerFullControl
       WebsiteConfiguration:
         IndexDocument: index.html
   WebsiteBucketPolicy:
@@ -132,8 +132,8 @@ Resources:
           Name: jar_lambda_schedule.py
           Code: |
             jar_lambda_schedule.py
-      WebsiteBucket: !Ref BuildsSourceBucket
-      WebsiteKey: jar_runner-website-latest.zip
+      WebsiteSourceBucket: !Ref BuildsSourceBucket
+      WebsiteSourceKey: jar_runner-website-latest.zip
   LambdaSourceCodeFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -174,6 +174,10 @@ Resources:
                 Resource: !GetAtt SourceCodeBucket.Arn
               -
                 Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt WebsiteBucket.Arn
+              -
+                Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:DeleteObject
@@ -184,6 +188,7 @@ Resources:
                 Effect: Allow
                 Action:
                   - s3:PutObject
+                  - s3:DeleteObject
                 Resource: !Sub
                   - ${WebsiteBucket}/*
                   - WebsiteBucket: !GetAtt WebsiteBucket.Arn
@@ -243,7 +248,7 @@ Resources:
       Environment:
         Variables:
           JAR_LAMBDA_NOTIFY_SNS_ARN: !Ref NotifyTopic
-          JAR_LAMBDA_OUTPUT_BUCKET: "x"
+          JAR_LAMBDA_OUTPUT_BUCKET: "x" # TODO: remove, this will be get from lambda's context
       Code:
         S3Bucket: !Ref SourceCodeBucket
         S3Key: jar_lambda_notify.zip

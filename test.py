@@ -25,13 +25,11 @@ def zip_website(path):
 
 try:
     s3 = boto3.client('s3')
-    ret = s3.get_object(Bucket='jar-runner-builds', Key='jar_runner-website-latest.zip')
-    zip_buf = io.BytesIO(ret['Body'].read())
-    with zipfile.ZipFile(zip_buf, 'r') as zip_file:
-        for n in zip_file.namelist():
-            print(n)
-        # s3.put_object(Bucket=website_bucket_name, Key=func['Name'].replace('.py', '.zip'), Body=zip_buf.getvalue())
-    logger.info('Uploaded website\n')
+    r3 = boto3.resource('s3')
+    for b in s3.list_buckets()['Buckets']:
+        if b['Name'].startswith('jr'):
+            b = r3.Bucket(b['Name'])
+            print(b)
 except s3.exceptions.NoSuchKey as e:
     print('no such key')
     print(e)
