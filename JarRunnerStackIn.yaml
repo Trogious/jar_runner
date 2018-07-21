@@ -86,6 +86,19 @@ Resources:
       AccessControl: PublicRead
       WebsiteConfiguration:
         IndexDocument: index.html
+  WebsiteBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref WebsiteBucket
+      PolicyDocument:
+        Statement:
+          -
+            Effect: Allow
+            Action: s3:GetObject
+            Principal: '*'
+            Resource: !Sub
+              - ${WebsiteBucket}/*
+              - WebsiteBucket: !GetAtt WebsiteBucket.Arn
   SourceCodeBucket:
     Type: AWS::S3::Bucket
     Properties:
@@ -735,7 +748,7 @@ Resources:
         Variables:
           JAR_LAMBDA_OUTPUT_BUCKET: !Ref OutputBucket
           JAR_LAMBDA_NOTIFY_FUNCTION_ARN: !GetAtt LambdaNotifyFuction.Arn
-          JAR_LAMBDA_STACK_NAME: ${AWS::StackName}
+          JAR_LAMBDA_STACK_NAME: !Sub ${AWS::StackName}
       Code:
         S3Bucket: !Ref SourceCodeBucket
         S3Key: jar_lambda_ami.zip

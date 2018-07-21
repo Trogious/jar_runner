@@ -1,7 +1,7 @@
-import logging
+import boto3
 import cfnresponse
 import json
-import boto3
+import logging
 import os
 from botocore.exceptions import WaiterError
 
@@ -21,7 +21,6 @@ def handler(event, context):
 
     physicalId = event['PhysicalResourceId'] if 'PhysicalResourceId' in event else None
     logger.info('Request received: %s\n' % json.dumps(event))
-    logger.info('c: %s' % event['ResourceProperties']['Code'])
     try:
         instanceId = event['ResourceProperties']['InstanceId']
         if not instanceId:
