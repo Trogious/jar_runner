@@ -712,7 +712,7 @@ Resources:
       SourceArn: !Sub
         - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiID}/*/*/newpass
         - ApiID: !Ref JarApi
-  PermissionForApiToInvokeLambdaAuth:
+  PermissionForApiToInvokeLambdaSchedule:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
