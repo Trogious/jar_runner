@@ -22,7 +22,7 @@ def get_challenge_params(body):
     return None
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     resp = get_error_resp('unknown error')
     client = boto3.client('cognito-idp')
     try:

@@ -37,7 +37,7 @@ def launch_instance():
     return resp['Instances'][0]['InstanceId']
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     resp = get_error_resp('unknown error')
     bucket = os.getenv('JAR_LAMBDA_LIST_JARS_BUCKET')
     if bucket is None:

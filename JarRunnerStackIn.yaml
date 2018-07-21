@@ -685,6 +685,42 @@ Resources:
           Empty:
             type: object
             title: Empty Schema
+  PermissionForApiToInvokeLambdaAuth:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaAuthFuction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiID}/*/*/auth
+        - ApiID: !Ref JarApi
+  PermissionForApiToInvokeLambdaListJars:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaListJarsFuction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiID}/*/*/list-jars
+        - ApiID: !Ref JarApi
+  PermissionForApiToInvokeLambdaNewPass:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaNewPassFuction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiID}/*/*/newpass
+        - ApiID: !Ref JarApi
+  PermissionForApiToInvokeLambdaAuth:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaScheduleFuction.Arn
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub
+        - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiID}/*/*/schedule
+        - ApiID: !Ref JarApi
   JarApiDeployment:
     Type: AWS::ApiGateway::Deployment
     Properties:

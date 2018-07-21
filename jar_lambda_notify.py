@@ -2,7 +2,7 @@ import boto3
 from botocore.client import Config
 
 
-def lambda_handler(event, context):
+def handler(event, context):
     sns = boto3.client('sns')
     key = event['Records'][0]['s3']['object']['key']
     s3 = boto3.client('s3', config=Config(signature_version='s3v4'))
