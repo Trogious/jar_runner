@@ -239,6 +239,9 @@ Resources:
       Runtime: python3.6
       Handler: index.handler
       Role: !GetAtt LambdaListJarsRole.Arn
+      Environment:
+        Variables:
+          RTP_LAMBDA_LIST_JARS_BUCKET: !Ref InputBucket
       Code:
         S3Bucket: !Ref SourceCodeBucket
         S3Key: jar_lambda_list_jars.zip
