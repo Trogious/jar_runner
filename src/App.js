@@ -14,10 +14,10 @@ export default class App extends React.Component {
     const cachedJars = JSON.parse(localStorage.getItem('jars'));
     this.state = { token: cachedToken, message: '', jars: cachedJars };
 
-    this.list_url = 'https://ejdx39j2jj.execute-api.eu-central-1.amazonaws.com/dev/list-jars';
-    this.auth_url = 'https://ejdx39j2jj.execute-api.eu-central-1.amazonaws.com/dev/auth';
-    this.newpass_url = 'https://ejdx39j2jj.execute-api.eu-central-1.amazonaws.com/dev/newpass';
-    this.schedule_url = 'https://ejdx39j2jj.execute-api.eu-central-1.amazonaws.com/dev/schedule';
+    this.list_url = 'JAR_API_ENDPOINT_LIST_JARS';
+    this.auth_url = 'JAR_API_ENDPOINT_AUTH';
+    this.newpass_url = 'JAR_API_ENDPOINT_NEWPASS';
+    this.schedule_url = 'JAR_API_ENDPOINT_SCHEDULE';
   }
 
   fetchJarList() {

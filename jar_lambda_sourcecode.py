@@ -43,16 +43,6 @@ def handler(event, context):
                         write_to_zip(zip_file, 'cfnresponse.py', cfn_module['Body'].read())
                 s3.put_object(Bucket=src_bucket_name, Key=func['Name'].replace('.py', '.zip'), Body=zip_buf.getvalue())
                 logger.info('Uploaded: %s\n' % func['Name'])
-            website_in_key = event['ResourceProperties']['WebsiteSourceKey']
-            website = s3.get_object(Bucket=website_in_bucket, Key=website_in_key)
-            zip_buf = io.BytesIO(website['Body'].read())
-            with zipfile.ZipFile(zip_buf, 'r') as zip_file:
-                for f_name in zip_file.namelist():
-                    if f_name.endswith('.html'):
-                        s3.put_object(Bucket=website_bucket_name, Key=f_name, Body=zip_file.read(f_name), ContentType='text/html')
-                    else:
-                        s3.put_object(Bucket=website_bucket_name, Key=f_name, Body=zip_file.read(f_name))
-            logger.info('Uploaded website from: %s/%s\n' % (website_in_bucket, website_in_key))
             success({'Msg': 'Source code uploaded to: %s' % src_bucket_name})
         elif event['RequestType'] == 'Delete':
             s3 = boto3.resource('s3')

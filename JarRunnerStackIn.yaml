@@ -4,6 +4,10 @@ Parameters:
     Type: String
     Default: jar-runner-builds
     Description: Bucket with source for website and lambdas.
+  JarApiStage:
+    Type: String
+    Default: prod
+    Description: Stage for API Deployment
 Mappings:
   RegionMap:
     ap-south-1:
@@ -48,11 +52,16 @@ Resources:
             Statement:
               -
                 Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt InputBucket.Arn
+              -
+                Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:GetObject
-                  - s3:ListBucket
-                Resource: !GetAtt InputBucket.Arn
+                Resource: !Sub
+                  - ${InputBucket}/*
+                  - InputBucket: !GetAtt InputBucket.Arn
   OutputBucketUsers:
     Type: AWS::IAM::Group
     Properties:
@@ -64,10 +73,15 @@ Resources:
             Statement:
               -
                 Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt OutputBucket.Arn
+              -
+                Effect: Allow
                 Action:
                   - s3:GetObject
-                  - s3:ListBucket
-                Resource: !GetAtt OutputBucket.Arn
+                Resource: !Sub
+                  - ${OutputBucket}/*
+                  - OutputBucket: !GetAtt OutputBucket.Arn
   ScheduleQueue:
     Type: AWS::SQS::Queue
   NotifyTopic:
@@ -133,7 +147,7 @@ Resources:
           Code: |
             jar_lambda_schedule.py
       WebsiteSourceBucket: !Ref BuildsSourceBucket
-      WebsiteSourceKey: jar_runner-website-latest.zip
+      # WebsiteSourceKey: jar_runner-website-latest.zip
   LambdaSourceCodeFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -408,7 +422,7 @@ Resources:
           title: !Sub jar_runner_api-${AWS::StackName}
           description: !Sub Rest API for ${AWS::StackName}
         # host: ejdx39j2jj.execute-api.eu-central-1.amazonaws.com
-        basePath: /dev
+        basePath: !Sub /${JarApiStage}
         schemes:
         - https
         paths:
@@ -676,7 +690,7 @@ Resources:
     Properties:
       RestApiId: !Ref JarApi
       Description: !Sub JarApi deployment for ${AWS::StackName}
-      StageName: dev
+      StageName: !Sub ${JarApiStage}
   JarCognitoUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
@@ -699,6 +713,29 @@ Resources:
     Properties:
       ServiceToken: !GetAtt LambdaAMIFuction.Arn
       InstanceId: !Ref AMICreatorInstance
+      WebsiteSourceBucket: !Ref BuildsSourceBucket
+      WebsiteSourceKey: jar_runner-website-latest.zip
+      ApiEndpoints:
+        -
+          Name: JAR_API_ENDPOINT_AUTH
+          URL: !Sub
+            - https://${ApiID}.execute-api.${AWS::Region}.amazonaws.com/${JarApiStage}/auth
+            - ApiID: !Ref JarApi
+        -
+          Name: JAR_API_ENDPOINT_NEWPASS
+          URL: !Sub
+            - https://${ApiID}.execute-api.${AWS::Region}.amazonaws.com/${JarApiStage}/newpass
+            - ApiID: !Ref JarApi
+        -
+          Name: JAR_API_ENDPOINT_SCHEDULE
+          URL: !Sub
+            - https://${ApiID}.execute-api.${AWS::Region}.amazonaws.com/${JarApiStage}/schedule
+            - ApiID: !Ref JarApi
+        -
+          Name: JAR_API_ENDPOINT_LIST_JARS
+          URL: !Sub
+            - https://${ApiID}.execute-api.${AWS::Region}.amazonaws.com/${JarApiStage}/list-jars
+            - ApiID: !Ref JarApi
   LambdaAMIRole:
     Type: AWS::IAM::Role
     Properties:
@@ -742,6 +779,14 @@ Resources:
                 Effect: Allow
                 Action: s3:PutBucketNotification
                 Resource: !GetAtt OutputBucket.Arn
+              -
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub
+                  - ${WebsiteBucket}/*
+                  - WebsiteBucket: !GetAtt WebsiteBucket.Arn
   LambdaAMIFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -752,6 +797,7 @@ Resources:
       Environment:
         Variables:
           JAR_LAMBDA_OUTPUT_BUCKET: !Ref OutputBucket
+          JAR_LAMBDA_WEBSITE_BUCKET: !Ref WebsiteBucket
           JAR_LAMBDA_NOTIFY_FUNCTION_ARN: !GetAtt LambdaNotifyFuction.Arn
           JAR_LAMBDA_STACK_NAME: !Sub ${AWS::StackName}
       Code:
@@ -781,3 +827,7 @@ Outputs:
     Value: !Ref OutputBucket
   WebsiteURL:
     Value: !GetAtt WebsiteBucket.WebsiteURL
+  JarApiRoot:
+    Value: !GetAtt JarApi.RootResourceId
+  JarApiID:
+    Value: !Ref JarApi

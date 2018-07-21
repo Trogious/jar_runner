@@ -1,12 +1,39 @@
 import boto3
 import cfnresponse
+import io
 import json
 import logging
 import os
 from botocore.exceptions import WaiterError
+import zipfile
 
 logger = logging.getLogger()
 logger.setLevel(logging.INFO)
+
+
+def further_setup(event):
+    s3 = boto3.client('s3')
+    s3.put_bucket_notification_configuration(
+        Bucket=os.getenv('JAR_LAMBDA_OUTPUT_BUCKET'),
+        NotificationConfiguration={'LambdaFunctionConfigurations':
+                                   [{'LambdaFunctionArn': os.getenv('JAR_LAMBDA_NOTIFY_FUNCTION_ARN'),
+                                    'Events': ['s3:ObjectCreated:Post', 's3:ObjectCreated:Put']}]})
+    website_bucket_name = os.getenv('JAR_LAMBDA_WEBSITE_BUCKET')
+    website_in_bucket = event['ResourceProperties']['WebsiteSourceBucket']
+    website_in_key = event['ResourceProperties']['WebsiteSourceKey']
+    website = s3.get_object(Bucket=website_in_bucket, Key=website_in_key)
+    zip_buf = io.BytesIO(website['Body'].read())
+    with zipfile.ZipFile(zip_buf, 'r') as zip_file:
+        for f_name in zip_file.namelist():
+            body = zip_file.read(f_name)
+            if f_name.endswith('.html'):
+                s3.put_object(Bucket=website_bucket_name, Key=f_name, Body=body, ContentType='text/html')
+            else:
+                if f_name.startswith('static/js/main') and f_name.endswith('.js'):
+                    for ep in event['ResourceProperties']['ApiEndpoints']:
+                        body = body.replace(ep['Name'].encode('ascii'), ep['URL'].encode('ascii'))
+                s3.put_object(Bucket=website_bucket_name, Key=f_name, Body=body)
+    logger.info('Uploaded website from: %s/%s\n' % (website_in_bucket, website_in_key))
 
 
 def handler(event, context):
@@ -65,11 +92,7 @@ def handler(event, context):
                 for snapshot in snapshots:
                     ec2.Snapshot(snapshot).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerSnapshot-' + stack_name}])
             ec2client.terminate_instances(InstanceIds=[instanceId])
-            boto3.client('s3').put_bucket_notification_configuration(
-                Bucket=os.getenv('JAR_LAMBDA_OUTPUT_BUCKET'),
-                NotificationConfiguration={'LambdaFunctionConfigurations':
-                                           [{'LambdaFunctionArn': os.getenv('JAR_LAMBDA_NOTIFY_FUNCTION_ARN'),
-                                            'Events': ['s3:ObjectCreated:Post', 's3:ObjectCreated:Put']}]})
+            further_setup(event)
             success({'Msg': 'AMI created: %s' % ami_name})
         else:
             success({'Msg': 'Unknown RequestType'})
