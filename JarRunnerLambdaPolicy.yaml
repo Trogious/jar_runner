@@ -1,90 +1,51 @@
 Resources:
-  ScheduleQueue:
-    Type: AWS::SQS::Queue
-  NotifyTopic:
-    Type: AWS::SNS::Topic
-  InputBucket:
+  SourceCodeBucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: BucketOwnerFullControl
-  OutputBucket:
-    Type: AWS::S3::Bucket
+  SourceCodeToS3:
+    Type: Custom::SourceUploader
     Properties:
-      AccessControl: BucketOwnerFullControl
-      # NotificationConfiguration:
-      #   LambdaConfigurations:
-      #     -
-      #       Function: !GetAtt LambdaNotifyFuction.Arn
-      #       Event: 's3:ObjectCreated:*'
-      #       Filter:
-      #         S3Key:
-      #           Rules:
-      #             -
-      #               Name: suffix
-      #               Value: tgz
-  LambdaAuthFuction:
+      ServiceToken: !GetAtt LambdaSourceCodeFuction.Arn
+      Functions:
+        -
+          Name: jar_lambda_ami.py
+          Code: !Sub |
+            jar_lambda_ami.py
+        -
+          Name: jar_lambda_auth.py
+          Code: |
+            jar_lambda_auth.py
+        -
+          Name: jar_lambda_list_jars.py
+          Code: |
+            jar_lambda_list_jars.py
+        -
+          Name: jar_lambda_newpass.py
+          Code: |
+            jar_lambda_newpass.py
+        -
+          Name: jar_lambda_notify.py
+          Code: |
+            jar_lambda_notify.py
+        -
+          Name: jar_lambda_schedule.py
+          Code: |
+            jar_lambda_schedule.py
+  LambdaSourceCodeFuction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
       Handler: index.handler
-      Role: !GetAtt LambdaAuthRole.Arn
+      Role: !GetAtt LambdaSourceCodeRole.Arn
+      Timeout: 300
       Environment:
         Variables:
-          JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
+          JAR_LAMBDA_SOURCECODE_BUCKET: !Ref SourceCodeBucket
       Code:
         ZipFile: |
-          jar_lambda_auth.py
-  LambdaNewPassFuction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Runtime: python3.6
-      Handler: index.handler
-      Role: !GetAtt LambdaAuthRole.Arn
-      Environment:
-        Variables:
-          JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
-      Code:
-        ZipFile: |
-          jar_lambda_newpass.py
-  LambdaListJarsFuction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Runtime: python3.6
-      Handler: index.handler
-      Role: !GetAtt LambdaListJarsRole.Arn
-      Code:
-        ZipFile: |
-          jar_lambda_list_jars.py
-  LambdaScheduleFuction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Runtime: python3.6
-      Handler: index.handler
-      Role: !GetAtt LambdaScheduleRole.Arn
-      Code:
-        ZipFile: |
-          jar_lambda_schedule.py
-  PermissionForS3ToInvokeLambdaNotify:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt LambdaNotifyFuction.Arn
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt OutputBucket.Arn
-  LambdaNotifyFuction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Runtime: python3.6
-      Handler: index.handler
-      Role: !GetAtt LambdaNotifyRole.Arn
-      Environment:
-        Variables:
-          JAR_LAMBDA_NOTIFY_SNS_ARN: !Ref NotifyTopic
-          JAR_LAMBDA_OUTPUT_BUCKET: "x"
-      Code:
-        ZipFile: |
-          jar_lambda_notify.py
-  LambdaNotifyRole:
+          jar_lambda_sourcecode.py
+  LambdaSourceCodeRole:
     Type: AWS::IAM::Role
     Properties:
       ManagedPolicyArns:
@@ -92,7 +53,6 @@ Resources:
       AssumeRolePolicyDocument:
         Version: 2012-10-17
         Statement:
-          -
             Effect: Allow
             Principal:
               Service:
@@ -101,453 +61,19 @@ Resources:
               - sts:AssumeRole
       Policies:
         -
-          PolicyName: PublishToTopic
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              -
-                Effect: Allow
-                Action: sns:Publish
-                Resource: !Ref NotifyTopic
-        -
-          PolicyName: S3GetResults
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              -
-                Effect: Allow
-                Action: s3:GetObject
-                Resource: !GetAtt OutputBucket.Arn
-  Ec2ExecuteJarRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        -
-          PolicyName: S3GetJar
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              -
-                Effect: Allow
-                Action: s3:GetObject
-                Resource: !GetAtt InputBucket.Arn
-                Condition:
-                  StringEquals:
-                    s3:prefix:
-                      - jars/
-        -
-          PolicyName: S3PutResults
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              -
-                Effect: Allow
-                Action: s3:PutObject
-                Resource: !GetAtt OutputBucket.Arn
-  LambdaAuthRole:
-    Type: AWS::IAM::Role
-    Properties:
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-  LambdaScheduleRole:
-    Type: AWS::IAM::Role
-    Properties:
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        -
-          PolicyName: PassRole
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              -
-                Effect: Allow
-                Action: iam:PassRole
-                Resource: !GetAtt Ec2ExecuteJarRole.Arn
-  LambdaListJarsRole:
-    Type: AWS::IAM::Role
-    Properties:
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        -
-          PolicyName: ListJars
+          PolicyName: PutToSourceCodeBucket
           PolicyDocument:
             Version: 2012-10-17
             Statement:
               -
                 Effect: Allow
                 Action: s3:ListBucket
-                Resource: !GetAtt InputBucket.Arn
-                Condition:
-                  StringEquals:
-                    s3:prefix:
-                      - jars/
-  JarApi:
-    Type: AWS::ApiGateway::RestApi
-    Properties:
-      Body:
-        swagger: 2.0
-        info:
-          version: 1.0
-          title: !Sub jar_runner_api-${AWS::StackName}
-          description: !Sub Rest API for ${AWS::StackName}
-        # host: ejdx39j2jj.execute-api.eu-central-1.amazonaws.com
-        basePath: /dev
-        schemes:
-        - https
-        paths:
-          /auth:
-            post:
-              produces:
-              - application/json
-              responses:
-                '200':
-                  description: 200 response
-                  schema:
-                    '$ref': '#/definitions/Empty'
-                  headers:
-                    Access-Control-Allow-Origin:
-                      type: string
-              x-amazon-apigateway-integration:
-                type: AWS_PROXY
-                httpMethod: POST
-                uri: !Join
-                  - ''
-                  - - !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/
-                    - !GetAtt LambdaAuthFuction.Arn
-                    - /invocations
-                passthroughBehavior: WHEN_NO_MATCH
-                contentHandling: CONVERT_TO_TEXT
-                responses:
-                  '200':
-                    statusCode: 200
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
-                    responseTemplates:
-                      application/json: 'null'
-            options:
-              consumes:
-              - application/json
-              produces:
-              - application/json
-              responses:
-                '200':
-                  description: 200 response
-                  schema:
-                    '$ref': '#/definitions/Empty'
-                  headers:
-                    Access-Control-Allow-Origin:
-                      type: string
-                    Access-Control-Allow-Methods:
-                      type: string
-                    Access-Control-Allow-Headers:
-                      type: string
-              x-amazon-apigateway-integration:
-                type: MOCK
-                passthroughBehavior: WHEN_NO_MATCH
-                requestTemplates:
-                  application/json: '{"statusCode": 200}'
-                responses:
-                  '200':
-                    statusCode: 200
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
-                    responseTemplates:
-                      application/json: 'null'
-          /newpass:
-            post:
-              produces:
-              - application/json
-              responses:
-                '200':
-                  description: 200 response
-                  schema:
-                    '$ref': '#/definitions/Empty'
-                  headers:
-                    Access-Control-Allow-Origin:
-                      type: string
-              x-amazon-apigateway-integration:
-                type: AWS_PROXY
-                httpMethod: POST
-                uri: !Join
-                  - ''
-                  - - !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/
-                    - !GetAtt LambdaNewPassFuction.Arn
-                    - /invocations
-                passthroughBehavior: WHEN_NO_MATCH
-                contentHandling: CONVERT_TO_TEXT
-                responses:
-                  '200':
-                    statusCode: 200
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
-                    responseTemplates:
-                      application/json: 'null'
-            options:
-              consumes:
-              - application/json
-              produces:
-              - application/json
-              responses:
-                '200':
-                  description: 200 response
-                  schema:
-                    '$ref': '#/definitions/Empty'
-                  headers:
-                    Access-Control-Allow-Origin:
-                      type: string
-                    Access-Control-Allow-Methods:
-                      type: string
-                    Access-Control-Allow-Headers:
-                      type: string
-              x-amazon-apigateway-integration:
-                type: MOCK
-                passthroughBehavior: WHEN_NO_MATCH
-                requestTemplates:
-                  application/json: '{"statusCode": 200}'
-                responses:
-                  '200':
-                    statusCode: 200
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
-                    responseTemplates:
-                      application/json: 'null'
-          /list-jars:
-            get:
-              produces:
-              - application/json
-              responses:
-                '200':
-                  description: 200 response
-                  schema:
-                    '$ref': '#/definitions/Empty'
-                  headers:
-                    Access-Control-Allow-Origin:
-                      type: string
-              security:
-              - jar_authorizer_cognito: []
-              x-amazon-apigateway-integration:
-                type: AWS_PROXY
-                httpMethod: POST
-                uri: !Join
-                  - ''
-                  - - !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/
-                    - !GetAtt LambdaListJarsFuction.Arn
-                    - /invocations
-                passthroughBehavior: WHEN_NO_MATCH
-                contentHandling: CONVERT_TO_TEXT
-                responses:
-                  '200':
-                    statusCode: 200
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
-                    responseTemplates:
-                      application/json: 'null'
-            options:
-              consumes:
-              - application/json
-              produces:
-              - application/json
-              responses:
-                '200':
-                  description: 200 response
-                  schema:
-                    '$ref': '#/definitions/Empty'
-                  headers:
-                    Access-Control-Allow-Origin:
-                      type: string
-                    Access-Control-Allow-Methods:
-                      type: string
-                    Access-Control-Allow-Headers:
-                      type: string
-              x-amazon-apigateway-integration:
-                type: MOCK
-                passthroughBehavior: WHEN_NO_MATCH
-                requestTemplates:
-                  application/json: '{"statusCode": 200}'
-                responses:
-                  '200':
-                    statusCode: 200
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
-                    responseTemplates:
-                      application/json: 'null'
-          /schedule:
-            post:
-              produces:
-              - application/json
-              responses:
-                '200':
-                  description: 200 response
-                  schema:
-                    '$ref': '#/definitions/Empty'
-                  headers:
-                    Access-Control-Allow-Origin:
-                      type: string
-              security:
-              - jar_authorizer_cognito: []
-              x-amazon-apigateway-integration:
-                type: AWS_PROXY
-                httpMethod: POST
-                uri: !Join
-                  - ''
-                  - - !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/
-                    - !GetAtt LambdaScheduleFuction.Arn
-                    - /invocations
-                passthroughBehavior: WHEN_NO_MATCH
-                contentHandling: CONVERT_TO_TEXT
-                responses:
-                  '200':
-                    statusCode: 200
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
-                    responseTemplates:
-                      application/json: 'null'
-            options:
-              consumes:
-              - application/json
-              produces:
-              - application/json
-              responses:
-                '200':
-                  description: 200 response
-                  schema:
-                    '$ref': '#/definitions/Empty'
-                  headers:
-                    Access-Control-Allow-Origin:
-                      type: string
-                    Access-Control-Allow-Methods:
-                      type: string
-                    Access-Control-Allow-Headers:
-                      type: string
-              x-amazon-apigateway-integration:
-                type: MOCK
-                passthroughBehavior: WHEN_NO_MATCH
-                requestTemplates:
-                  application/json: '{"statusCode": 200}'
-                responses:
-                  '200':
-                    statusCode: 200
-                    responseParameters:
-                      method.response.header.Access-Control-Allow-Headers: "'Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token'"
-                      method.response.header.Access-Control-Allow-Methods: "'GET,OPTIONS'"
-                      method.response.header.Access-Control-Allow-Origin: "'*'"
-                    responseTemplates:
-                      application/json: 'null'
-        securityDefinitions:
-          jar_authorizer_cognito:
-            type: apiKey
-            name: Authorization
-            in: header
-            x-amazon-apigateway-authtype: cognito_user_pools
-            x-amazon-apigateway-authorizer:
-              type: cognito_user_pools
-              providerARNs:
-                - !GetAtt JarCognitoUserPool.Arn
-              identitySource: method.request.header.Authorization
-        definitions:
-          Empty:
-            type: object
-            title: Empty Schema
-  JarApiDeployment:
-    Type: AWS::ApiGateway::Deployment
-    Properties:
-      RestApiId: !Ref JarApi
-      Description: !Sub JarApi deployment for ${AWS::StackName}
-      StageName: dev
-  JarCognitoUserPool:
-    Type: AWS::Cognito::UserPool
-    Properties:
-      UserPoolName: jar_cognito_user_pool
-  JarUserPoolClient:
-    Type: AWS::Cognito::UserPoolClient
-    Properties:
-      GenerateSecret: false
-      UserPoolId: !Ref JarCognitoUserPool
-      ExplicitAuthFlows:
-        - USER_PASSWORD_AUTH
-  # LambdaWTFRole:
-  #   Type: AWS::IAM::Role
-  #   Properties:
-  #     ManagedPolicyArns:
-  #       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-  #     AssumeRolePolicyDocument:
-  #       Version: 2012-10-17
-  #       Statement:
-  #         -
-  #           Effect: Allow
-  #           Principal:
-  #             Service:
-  #               - lambda.amazonaws.com
-  #           Action:
-  #             - sts:AssumeRole
-  #     Policies:
-  #       -
-  #         PolicyName: WriteToQueue
-  #         PolicyDocument:
-  #           Version: 2012-10-17
-  #           Statement:
-  #             -
-  #               Effect: Allow
-  #               Action:
-  #                 - sqs:GetQueueUrl
-  #                 - sqs:SendMessage
-  #               Resource: !GetAtt ScheduleQueue.Arn
-Outputs:
-  Secret:
-    Value: !GetAtt JarUserPoolClient.ClientSecret
-  ClientId:
-    Value: !Ref JarUserPoolClient
-  # InputBucketName:
-  #   Value: !Ref InputBucket
-  # OutputBucketName:
-  #   Value: !Ref OutputBucket
-  # LNotify:
-  #   Value: !GetAtt LambdaNotifyFuction.Arn
+                Resource: !GetAtt SourceCodeBucket.Arn
+              -
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub
+                  - ${SourceCodeBucket}/*
+                  - SourceCodeBucket: !GetAtt SourceCodeBucket.Arn

@@ -1,0 +1,34 @@
+version: 0.2
+
+#env:
+  #variables:
+     # key: "value"
+     # key: "value"
+  #parameter-store:
+     # key: "value"
+     # key: "value"
+
+phases:
+  install:
+    commands:
+      - npm install
+      # - command
+  #pre_build:
+    #commands:
+      # - command
+      # - command
+  build:
+    commands:
+      - npm run build
+  post_build:
+    commands:
+      - cd build && zip -r9 ../jar_runner-website-latest.zip .
+      # - command
+artifacts:
+  files:
+    - jar_runner-website-latest.zip
+  #discard-paths: yes
+  #base-directory: location
+#cache:
+  #paths:
+    # - paths

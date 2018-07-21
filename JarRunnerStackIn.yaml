@@ -1,4 +1,9 @@
-Description: Deploys the entire environment for JarRunner
+Description: Deploys entire environment for JarRunner
+Parameters:
+  BuildsSourceBucket:
+    Type: String
+    Default: jar-runner-builds
+    Description: Bucket with source for website and lambdas.
 Mappings:
   RegionMap:
     ap-south-1:
@@ -75,25 +80,103 @@ Resources:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: BucketOwnerFullControl
-      # NotificationConfiguration:
-      #   LambdaConfigurations:
-      #     -
-      #       Function: !GetAtt LambdaNotifyFuction.Arn
-      #       Event: 's3:ObjectCreated:*'
-      #       Filter:
-      #         S3Key:
-      #           Rules:
-      #             -
-      #               Name: suffix
-      #               Value: tgz
   WebsiteBucket:
     Type: AWS::S3::Bucket
     Properties:
       AccessControl: PublicRead
       WebsiteConfiguration:
         IndexDocument: index.html
+  SourceCodeBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: BucketOwnerFullControl
+  SourceCodeToS3:
+    Type: Custom::SourceUploader
+    Properties:
+      ServiceToken: !GetAtt LambdaSourceCodeFuction.Arn
+      Functions:
+        -
+          Name: jar_lambda_ami.py
+          Code: |
+            jar_lambda_ami.py
+        -
+          Name: jar_lambda_auth.py
+          Code: |
+            jar_lambda_auth.py
+        -
+          Name: jar_lambda_list_jars.py
+          Code: |
+            jar_lambda_list_jars.py
+        -
+          Name: jar_lambda_newpass.py
+          Code: |
+            jar_lambda_newpass.py
+        -
+          Name: jar_lambda_notify.py
+          Code: |
+            jar_lambda_notify.py
+        -
+          Name: jar_lambda_schedule.py
+          Code: |
+            jar_lambda_schedule.py
+      WebsiteBucket: !Ref BuildsSourceBucket
+      WebsiteKey: jar_runner-website-latest.zip
+  LambdaSourceCodeFuction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.6
+      Handler: index.handler
+      Role: !GetAtt LambdaSourceCodeRole.Arn
+      Timeout: 300
+      Environment:
+        Variables:
+          JAR_LAMBDA_SOURCECODE_BUCKET: !Ref SourceCodeBucket
+          JAR_LAMBDA_WEBSITE_BUCKET: !Ref WebsiteBucket
+      Code:
+        ZipFile: |
+          jar_lambda_sourcecode.py
+  LambdaSourceCodeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: PutToSourceCodeAndWebsiteBucket
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt SourceCodeBucket.Arn
+              -
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub
+                  - ${SourceCodeBucket}/*
+                  - SourceCodeBucket: !GetAtt SourceCodeBucket.Arn
+              -
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                Resource: !Sub
+                  - ${WebsiteBucket}/*
+                  - WebsiteBucket: !GetAtt WebsiteBucket.Arn
   LambdaAuthFuction:
     Type: AWS::Lambda::Function
+    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
@@ -102,10 +185,11 @@ Resources:
         Variables:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
       Code:
-        ZipFile: |
-          jar_lambda_auth.py
+        S3Bucket: !Ref SourceCodeBucket
+        S3Key: jar_lambda_auth.zip
   LambdaNewPassFuction:
     Type: AWS::Lambda::Function
+    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
@@ -114,35 +198,31 @@ Resources:
         Variables:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
       Code:
-        ZipFile: |
-          jar_lambda_newpass.py
+        S3Bucket: !Ref SourceCodeBucket
+        S3Key: jar_lambda_newpass.zip
   LambdaListJarsFuction:
     Type: AWS::Lambda::Function
+    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
       Role: !GetAtt LambdaListJarsRole.Arn
       Code:
-        ZipFile: |
-          jar_lambda_list_jars.py
+        S3Bucket: !Ref SourceCodeBucket
+        S3Key: jar_lambda_list_jars.zip
   LambdaScheduleFuction:
     Type: AWS::Lambda::Function
+    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
       Role: !GetAtt LambdaScheduleRole.Arn
       Code:
-        ZipFile: |
-          jar_lambda_schedule.py
-  PermissionForS3ToInvokeLambdaNotify:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: lambda:InvokeFunction
-      FunctionName: !GetAtt LambdaNotifyFuction.Arn
-      Principal: s3.amazonaws.com
-      SourceArn: !GetAtt OutputBucket.Arn
+        S3Bucket: !Ref SourceCodeBucket
+        S3Key: jar_lambda_schedule.zip
   LambdaNotifyFuction:
     Type: AWS::Lambda::Function
+    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
@@ -152,8 +232,15 @@ Resources:
           JAR_LAMBDA_NOTIFY_SNS_ARN: !Ref NotifyTopic
           JAR_LAMBDA_OUTPUT_BUCKET: "x"
       Code:
-        ZipFile: |
-          jar_lambda_notify.py
+        S3Bucket: !Ref SourceCodeBucket
+        S3Key: jar_lambda_notify.zip
+  PermissionForS3ToInvokeLambdaNotify:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !GetAtt LambdaNotifyFuction.Arn
+      Principal: s3.amazonaws.com
+      SourceArn: !GetAtt OutputBucket.Arn
   LambdaNotifyRole:
     Type: AWS::IAM::Role
     Properties:
@@ -594,8 +681,6 @@ Resources:
     Properties:
       ServiceToken: !GetAtt LambdaAMIFuction.Arn
       InstanceId: !Ref AMICreatorInstance
-      Code: !Sub |
-        jar_lambda_ami.py
   LambdaAMIRole:
     Type: AWS::IAM::Role
     Properties:
@@ -650,9 +735,10 @@ Resources:
         Variables:
           JAR_LAMBDA_OUTPUT_BUCKET: !Ref OutputBucket
           JAR_LAMBDA_NOTIFY_FUNCTION_ARN: !GetAtt LambdaNotifyFuction.Arn
+          JAR_LAMBDA_STACK_NAME: ${AWS::StackName}
       Code:
-        ZipFile: !Sub |
-          jar_lambda_ami.py
+        S3Bucket: !Ref SourceCodeBucket
+        S3Key: jar_lambda_ami.zip
   AMICreatorInstance:
     Type: AWS::EC2::Instance
     Properties:

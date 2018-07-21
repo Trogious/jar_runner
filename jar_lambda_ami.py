@@ -39,7 +39,8 @@ def handler(event, context):
                     ec2.Snapshot(snapshot).delete()
             success({'Data': 'AMIs and snapshots Deleted'})
         elif event['RequestType'] in ['Create', 'Update']:
-            ami_name = 'JarRunnerAMI-${AWS::StackName}'
+            stack_name = os.getenv('JAR_LAMBDA_STACK_NAME', '')
+            ami_name = 'JarRunnerAMI-' + stack_name
             if not physicalId:  # AMI creation has not been requested yet
                 logger.info('Waiting for EC2 to stop: %s\n' % instanceId)
                 instance = ec2.Instance(instanceId)
@@ -60,10 +61,10 @@ def handler(event, context):
                 return
             images = ec2client.describe_images(ImageIds=[physicalId])
             for image in images['Images']:
-                ec2.Image(image['ImageId']).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerAMI-${AWS::StackName}'}])
+                ec2.Image(image['ImageId']).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerAMI-' + stack_name}])
                 snapshots = ([bdm['Ebs']['SnapshotId'] for bdm in image['BlockDeviceMappings'] if 'Ebs' in bdm and 'SnapshotId' in bdm['Ebs']])
                 for snapshot in snapshots:
-                    ec2.Snapshot(snapshot).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerSnapshot-${AWS::StackName}'}])
+                    ec2.Snapshot(snapshot).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerSnapshot-' + stack_name}])
             ec2client.terminate_instances(InstanceIds=[instanceId])
             boto3.client('s3').put_bucket_notification_configuration(
                 Bucket=os.getenv('JAR_LAMBDA_OUTPUT_BUCKET'),
