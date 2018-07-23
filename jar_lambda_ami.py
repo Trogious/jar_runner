@@ -48,7 +48,7 @@ def handler(event, context):
 
     physicalId = event['PhysicalResourceId'] if 'PhysicalResourceId' in event else None
     logger.info('Request received: %s\n' % json.dumps(event))
-    logger.info(json.dumps(context))
+    logger.info(str(context))
     try:
         instanceId = event['ResourceProperties']['InstanceId']
         if not instanceId:
