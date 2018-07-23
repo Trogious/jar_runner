@@ -13,4 +13,4 @@ phases:
       - for lambda in `ls jar_lambda_*.py`; do mv $lambda index.py && zipfile=`echo $lambda |sed s '/\.py$/.zip/'` && zip -9 $zipfile index.py ; grep cfnresponse index.py && zip -9 $zipfile index.py; done
 artifacts:
   files:
-    - *.zip
+    - '*.zip'
