@@ -21,3 +21,6 @@ phases:
 artifacts:
   files:
     - '*.zip'
+cache:
+  paths:
+    - node_modules
