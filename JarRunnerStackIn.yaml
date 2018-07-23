@@ -654,6 +654,10 @@ Resources:
     Properties:
       ServiceToken: !GetAtt LambdaAMIFuction.Arn
       InstanceId: !Ref AMICreatorInstance
+      OutputBucket: !Ref OutputBucket
+      LambdaNotifyArn: !GetAtt LambdaNotifyFuction.Arn
+      StackName: !Sub ${AWS::StackName}
+      WebsiteBucket: !Ref WebsiteBucket
       WebsiteSourceBucket: !Ref BuildsSourceBucket
       WebsiteSourceKey: jar_runner-website-latest.zip
       ApiEndpoints:
@@ -735,12 +739,6 @@ Resources:
       Handler: index.handler
       Role: !GetAtt LambdaAMIRole.Arn
       Timeout: 300
-      Environment:
-        Variables:
-          JAR_LAMBDA_OUTPUT_BUCKET: !Ref OutputBucket
-          JAR_LAMBDA_WEBSITE_BUCKET: !Ref WebsiteBucket
-          JAR_LAMBDA_NOTIFY_FUNCTION_ARN: !GetAtt LambdaNotifyFuction.Arn
-          JAR_LAMBDA_STACK_NAME: !Sub ${AWS::StackName}
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: jar_lambda_ami.zip

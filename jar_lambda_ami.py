@@ -14,11 +14,11 @@ logger.setLevel(logging.INFO)
 def further_setup(event):
     s3 = boto3.client('s3')
     s3.put_bucket_notification_configuration(
-        Bucket=os.getenv('JAR_LAMBDA_OUTPUT_BUCKET'),
+        Bucket=event['ResourceProperties']['OutputBucket'],
         NotificationConfiguration={'LambdaFunctionConfigurations':
-                                   [{'LambdaFunctionArn': os.getenv('JAR_LAMBDA_NOTIFY_FUNCTION_ARN'),
+                                   [{'LambdaFunctionArn': event['ResourceProperties']['LambdaNotifyArn'],
                                     'Events': ['s3:ObjectCreated:Post', 's3:ObjectCreated:Put']}]})
-    website_bucket_name = os.getenv('JAR_LAMBDA_WEBSITE_BUCKET')
+    website_bucket_name = event['ResourceProperties']['WebsiteBucket']
     website_in_bucket = event['ResourceProperties']['WebsiteSourceBucket']
     website_in_key = event['ResourceProperties']['WebsiteSourceKey']
     website = s3.get_object(Bucket=website_in_bucket, Key=website_in_key)
@@ -63,10 +63,12 @@ def handler(event, context):
                 snapshots = ([bdm['Ebs']['SnapshotId'] for bdm in image['BlockDeviceMappings'] if 'Ebs' in bdm and 'SnapshotId' in bdm['Ebs']])
                 for snapshot in snapshots:
                     ec2.Snapshot(snapshot).delete()
-
+            s3 = boto3.resource('s3')
+            bucket = s3.Bucket()
+            bucket.objects.all().delete()
             success({'Msg': 'AMIs and snapshots Deleted'})
         elif event['RequestType'] in ['Create', 'Update']:
-            stack_name = os.getenv('JAR_LAMBDA_STACK_NAME', '')
+            stack_name = event['ResourceProperties']['StackName']
             ami_name = 'JarRunnerAMI-' + stack_name
             if not physicalId:  # AMI creation has not been requested yet
                 logger.info('Waiting for EC2 to stop: %s\n' % instanceId)
