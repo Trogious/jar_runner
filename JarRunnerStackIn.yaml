@@ -124,7 +124,7 @@ Resources:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: jar_lambda_auth.zip
+        S3Key: latest/jar_lambda_auth.zip
   LambdaNewPassFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -136,7 +136,7 @@ Resources:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: jar_lambda_newpass.zip
+        S3Key: latest/jar_lambda_newpass.zip
   LambdaListJarsFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -148,7 +148,7 @@ Resources:
           JAR_LAMBDA_LIST_JARS_BUCKET: !Ref InputBucket
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: jar_lambda_list_jars.zip
+        S3Key: latest/jar_lambda_list_jars.zip
   LambdaScheduleFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -157,7 +157,7 @@ Resources:
       Role: !GetAtt LambdaScheduleRole.Arn
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: jar_lambda_schedule.zip
+        S3Key: latest/jar_lambda_schedule.zip
   LambdaNotifyFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -170,7 +170,7 @@ Resources:
           JAR_LAMBDA_OUTPUT_BUCKET: "x" # TODO: remove, this will be get from lambda's context
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: jar_lambda_notify.zip
+        S3Key: latest/jar_lambda_notify.zip
   PermissionForS3ToInvokeLambdaNotify:
     Type: AWS::Lambda::Permission
     Properties:
@@ -741,7 +741,7 @@ Resources:
       Timeout: 300
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: jar_lambda_ami.zip
+        S3Key: latest/jar_lambda_ami.zip
   AMICreatorInstance:
     Type: AWS::EC2::Instance
     Properties:
