@@ -635,7 +635,7 @@ Resources:
   JarCognitoUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: jar_cognito_user_pool-${AWS::StackName}
+      UserPoolName: !Sub jar_cognito_user_pool-${AWS::StackName}
   JarUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:

@@ -64,7 +64,7 @@ def handler(event, context):
                 for snapshot in snapshots:
                     ec2.Snapshot(snapshot).delete()
             s3 = boto3.resource('s3')
-            bucket = s3.Bucket()
+            bucket = s3.Bucket(event['ResourceProperties']['WebsiteBucket'])
             bucket.objects.all().delete()
             success({'Msg': 'AMIs and snapshots Deleted'})
         elif event['RequestType'] in ['Create', 'Update']:
