@@ -113,99 +113,6 @@ Resources:
             Resource: !Sub
               - ${WebsiteBucket}/*
               - WebsiteBucket: !GetAtt WebsiteBucket.Arn
-  SourceCodeBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      AccessControl: BucketOwnerFullControl
-  SourceCodeToS3:
-    Type: Custom::SourceUploader
-    Properties:
-      ServiceToken: !GetAtt LambdaSourceCodeFuction.Arn
-      Functions:
-        -
-          Name: jar_lambda_ami.py
-          Code: |
-            jar_lambda_ami.py
-        -
-          Name: jar_lambda_auth.py
-          Code: |
-            jar_lambda_auth.py
-        -
-          Name: jar_lambda_list_jars.py
-          Code: |
-            jar_lambda_list_jars.py
-        -
-          Name: jar_lambda_newpass.py
-          Code: |
-            jar_lambda_newpass.py
-        -
-          Name: jar_lambda_notify.py
-          Code: |
-            jar_lambda_notify.py
-        -
-          Name: jar_lambda_schedule.py
-          Code: |
-            jar_lambda_schedule.py
-      WebsiteSourceBucket: !Ref BuildsSourceBucket
-      # WebsiteSourceKey: jar_runner-website-latest.zip
-  LambdaSourceCodeFuction:
-    Type: AWS::Lambda::Function
-    Properties:
-      Runtime: python3.6
-      Handler: index.handler
-      Role: !GetAtt LambdaSourceCodeRole.Arn
-      Timeout: 300
-      Environment:
-        Variables:
-          JAR_LAMBDA_SOURCECODE_BUCKET: !Ref SourceCodeBucket
-          JAR_LAMBDA_WEBSITE_BUCKET: !Ref WebsiteBucket
-      Code:
-        ZipFile: |
-          jar_lambda_sourcecode.py
-  LambdaSourceCodeRole:
-    Type: AWS::IAM::Role
-    Properties:
-      ManagedPolicyArns:
-        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-            Effect: Allow
-            Principal:
-              Service:
-                - lambda.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        -
-          PolicyName: PutToSourceCodeAndWebsiteBucket
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              -
-                Effect: Allow
-                Action: s3:ListBucket
-                Resource: !GetAtt SourceCodeBucket.Arn
-              -
-                Effect: Allow
-                Action: s3:ListBucket
-                Resource: !GetAtt WebsiteBucket.Arn
-              -
-                Effect: Allow
-                Action:
-                  - s3:PutObject
-                  - s3:DeleteObject
-                Resource: !Sub
-                  - ${SourceCodeBucket}/*
-                  - SourceCodeBucket: !GetAtt SourceCodeBucket.Arn
-              -
-                Effect: Allow
-                Action:
-                  - s3:PutObject
-                  - s3:DeleteObject
-                Resource: !Sub
-                  - ${WebsiteBucket}/*
-                  - WebsiteBucket: !GetAtt WebsiteBucket.Arn
   LambdaAuthFuction:
     Type: AWS::Lambda::Function
     DependsOn: SourceCodeToS3
@@ -217,7 +124,7 @@ Resources:
         Variables:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
       Code:
-        S3Bucket: !Ref SourceCodeBucket
+        S3Bucket: !Ref BuildsSourceBucket
         S3Key: jar_lambda_auth.zip
   LambdaNewPassFuction:
     Type: AWS::Lambda::Function
@@ -230,7 +137,7 @@ Resources:
         Variables:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
       Code:
-        S3Bucket: !Ref SourceCodeBucket
+        S3Bucket: !Ref BuildsSourceBucket
         S3Key: jar_lambda_newpass.zip
   LambdaListJarsFuction:
     Type: AWS::Lambda::Function
@@ -243,7 +150,7 @@ Resources:
         Variables:
           RTP_LAMBDA_LIST_JARS_BUCKET: !Ref InputBucket
       Code:
-        S3Bucket: !Ref SourceCodeBucket
+        S3Bucket: !Ref BuildsSourceBucket
         S3Key: jar_lambda_list_jars.zip
   LambdaScheduleFuction:
     Type: AWS::Lambda::Function
@@ -253,7 +160,7 @@ Resources:
       Handler: index.handler
       Role: !GetAtt LambdaScheduleRole.Arn
       Code:
-        S3Bucket: !Ref SourceCodeBucket
+        S3Bucket: !Ref BuildsSourceBucket
         S3Key: jar_lambda_schedule.zip
   LambdaNotifyFuction:
     Type: AWS::Lambda::Function
@@ -267,7 +174,7 @@ Resources:
           JAR_LAMBDA_NOTIFY_SNS_ARN: !Ref NotifyTopic
           JAR_LAMBDA_OUTPUT_BUCKET: "x" # TODO: remove, this will be get from lambda's context
       Code:
-        S3Bucket: !Ref SourceCodeBucket
+        S3Bucket: !Ref BuildsSourceBucket
         S3Key: jar_lambda_notify.zip
   PermissionForS3ToInvokeLambdaNotify:
     Type: AWS::Lambda::Permission
@@ -840,7 +747,7 @@ Resources:
           JAR_LAMBDA_NOTIFY_FUNCTION_ARN: !GetAtt LambdaNotifyFuction.Arn
           JAR_LAMBDA_STACK_NAME: !Sub ${AWS::StackName}
       Code:
-        S3Bucket: !Ref SourceCodeBucket
+        S3Bucket: !Ref BuildsSourceBucket
         S3Key: jar_lambda_ami.zip
   AMICreatorInstance:
     Type: AWS::EC2::Instance

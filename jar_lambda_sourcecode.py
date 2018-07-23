@@ -25,6 +25,7 @@ def handler(event, context):
     def failed(e):
         cfnresponse.send(event, context, cfnresponse.FAILED, {'Msg': str(e)}, physicalId)
 
+
     physicalId = event['PhysicalResourceId'] if 'PhysicalResourceId' in event else None
     try:
         src_bucket_name = os.getenv('JAR_LAMBDA_SOURCECODE_BUCKET')

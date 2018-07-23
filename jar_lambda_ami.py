@@ -48,6 +48,7 @@ def handler(event, context):
 
     physicalId = event['PhysicalResourceId'] if 'PhysicalResourceId' in event else None
     logger.info('Request received: %s\n' % json.dumps(event))
+    logger.info(json.dumps(context))
     try:
         instanceId = event['ResourceProperties']['InstanceId']
         if not instanceId:
@@ -63,6 +64,7 @@ def handler(event, context):
                 snapshots = ([bdm['Ebs']['SnapshotId'] for bdm in image['BlockDeviceMappings'] if 'Ebs' in bdm and 'SnapshotId' in bdm['Ebs']])
                 for snapshot in snapshots:
                     ec2.Snapshot(snapshot).delete()
+
             success({'Msg': 'AMIs and snapshots Deleted'})
         elif event['RequestType'] in ['Create', 'Update']:
             stack_name = os.getenv('JAR_LAMBDA_STACK_NAME', '')
