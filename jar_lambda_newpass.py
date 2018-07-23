@@ -31,7 +31,7 @@ def handler(event, context):
             if params is None:
                 resp = get_error_resp('challenge params not provided')
             else:
-                client_id = os.getenv('RTP_LAMBDA_AUTH_CLIENT_ID')
+                client_id = os.getenv('JAR_LAMBDA_AUTH_CLIENT_ID')
                 if client_id is None:
                     resp = get_error_resp('CLIENT_ID not provided')
                 else:

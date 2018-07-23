@@ -145,7 +145,7 @@ Resources:
       Role: !GetAtt LambdaListJarsRole.Arn
       Environment:
         Variables:
-          RTP_LAMBDA_LIST_JARS_BUCKET: !Ref InputBucket
+          JAR_LAMBDA_LIST_JARS_BUCKET: !Ref InputBucket
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: jar_lambda_list_jars.zip
@@ -635,7 +635,7 @@ Resources:
   JarCognitoUserPool:
     Type: AWS::Cognito::UserPool
     Properties:
-      UserPoolName: jar_cognito_user_pool
+      UserPoolName: jar_cognito_user_pool-${AWS::StackName}
   JarUserPoolClient:
     Type: AWS::Cognito::UserPoolClient
     Properties:
@@ -766,9 +766,11 @@ Outputs:
     Value: !Ref InputBucket
   OutputBucketName:
     Value: !Ref OutputBucket
+  InputBucketGroup:
+    Value: !Ref InputBucketUsers
+  OutputBucketGroup:
+    Value: !Ref OutputBucketUsers
   WebsiteURL:
     Value: !GetAtt WebsiteBucket.WebsiteURL
-  JarApiRoot:
-    Value: !GetAtt JarApi.RootResourceId
   JarApiID:
     Value: !Ref JarApi

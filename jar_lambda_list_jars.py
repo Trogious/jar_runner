@@ -18,7 +18,7 @@ def get_unauthorized_resp(error):
 
 def handler(event, context):
     resp = get_error_resp('unknown error')
-    bucket = os.getenv('RTP_LAMBDA_LIST_JARS_BUCKET')
+    bucket = os.getenv('JAR_LAMBDA_LIST_JARS_BUCKET')
     if bucket is None:
         resp = get_error_resp('BUCKET not provided')
     else:
