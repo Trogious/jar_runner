@@ -659,7 +659,7 @@ Resources:
       StackName: !Sub ${AWS::StackName}
       WebsiteBucket: !Ref WebsiteBucket
       WebsiteSourceBucket: !Ref BuildsSourceBucket
-      WebsiteSourceKey: jar_runner-website-latest.zip
+      WebsiteSourceKey: latest/jar_website.zip
       ApiEndpoints:
         -
           Name: JAR_API_ENDPOINT_AUTH

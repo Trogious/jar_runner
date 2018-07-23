@@ -3,13 +3,17 @@ version: 0.2
 phases:
   install:
     commands:
+      - pwd
+      - ls -la
+      - ls -la ~
+      - ls -la /
       - npm install
   build:
     commands:
       - npm run build
   post_build:
     commands:
-      - cd build && zip -r9 ../jar_runner-website-latest.zip . ; cd ..
+      - cd build && zip -r9 ../jar_website.zip . ; cd ..
       - |
         for lambda in `ls jar_lambda_*.py`
         do
