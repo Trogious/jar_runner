@@ -22,6 +22,7 @@ phases:
           zip -9 $zipfile index.py
           grep cfnresponse index.py >/dev/null && zip -9 $zipfile cfnresponse.py
         done
+        zip -9 jar_lambda_schedule.zip jar_ec2_execute.py
 artifacts:
   files:
     - '*.zip'

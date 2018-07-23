@@ -726,6 +726,10 @@ Resources:
                 Resource: !GetAtt OutputBucket.Arn
               -
                 Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt WebsiteBucket.Arn
+              -
+                Effect: Allow
                 Action:
                   - s3:PutObject
                   - s3:DeleteObject

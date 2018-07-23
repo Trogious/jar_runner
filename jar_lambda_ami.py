@@ -3,7 +3,6 @@ import cfnresponse
 import io
 import json
 import logging
-import os
 from botocore.exceptions import WaiterError
 import zipfile
 
@@ -66,6 +65,7 @@ def handler(event, context):
             s3 = boto3.resource('s3')
             bucket = s3.Bucket(event['ResourceProperties']['WebsiteBucket'])
             bucket.objects.all().delete()
+            logger.info('AMIs and snapshots Deleted, WebsiteBucket emptied')
             success({'Msg': 'AMIs and snapshots Deleted'})
         elif event['RequestType'] in ['Create', 'Update']:
             stack_name = event['ResourceProperties']['StackName']
