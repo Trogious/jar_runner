@@ -115,7 +115,6 @@ Resources:
               - WebsiteBucket: !GetAtt WebsiteBucket.Arn
   LambdaAuthFuction:
     Type: AWS::Lambda::Function
-    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
@@ -128,7 +127,6 @@ Resources:
         S3Key: jar_lambda_auth.zip
   LambdaNewPassFuction:
     Type: AWS::Lambda::Function
-    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
@@ -141,7 +139,6 @@ Resources:
         S3Key: jar_lambda_newpass.zip
   LambdaListJarsFuction:
     Type: AWS::Lambda::Function
-    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
@@ -154,7 +151,6 @@ Resources:
         S3Key: jar_lambda_list_jars.zip
   LambdaScheduleFuction:
     Type: AWS::Lambda::Function
-    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
@@ -164,7 +160,6 @@ Resources:
         S3Key: jar_lambda_schedule.zip
   LambdaNotifyFuction:
     Type: AWS::Lambda::Function
-    DependsOn: SourceCodeToS3
     Properties:
       Runtime: python3.6
       Handler: index.handler
