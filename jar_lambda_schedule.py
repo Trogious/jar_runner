@@ -31,7 +31,7 @@ def send_to_queue(queue_name, jar_name):
 def create_user_data():
     with open('./jar_ec2_execute.py', 'r') as f:
         pass
-    return ''
+    return '/usr/sbin/poweroff'
 
 
 def get_user_data():

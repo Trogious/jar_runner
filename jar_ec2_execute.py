@@ -4,6 +4,7 @@ import subprocess
 import json
 import datetime
 import os
+import tarfile
 
 BUCKET_NAME_IN = 'rtp-input-jars'
 BUCKET_NAME_OUT = 'rtp-output-results'
@@ -19,7 +20,6 @@ def extract_jar_name(body):
 
 
 def compress_results(dir_path):
-    import tarfile
     archive = dir_path[:-1] + '.tgz'
     with tarfile.open(archive, 'w:gz') as tar:
         for root, dirs, files in os.walk(dir_path):

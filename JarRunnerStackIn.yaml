@@ -166,13 +166,13 @@ Resources:
       Runtime: python3.6
       Handler: index.handler
       Role: !GetAtt LambdaScheduleRole.Arn
-      JarExecutorInstanceProfile
       Environment:
         Variables:
-          JAR_LAMBDA_QUEUE_NAME: !Ref ScheduleQueue
-          JAR_LAMBDA_INSTANCE_PROFILE_ARN: !GetAtt JarExecutorInstanceProfile.Arn
-          JAR_LAMBDA_AMI_ID: !GetAtt AMICreate.AmiId
+          JAR_LAMBDA_QUEUE_NAME: !GetAtt ScheduleQueue.QueueName
+          JAR_LAMBDA_LIST_JARS_BUCKET: !Ref InputBucket
           JAR_LAMBDA_EXECUTOR_INSTANCE_TYPE: !Ref ExecutorInstanceType
+          JAR_LAMBDA_INSTANCE_PROFILE_ARN: !GetAtt JarExecutorInstanceProfile.Arn
+          JAR_LAMBDA_AMI_ID: JarExecutorAMI.AmiId
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: !Sub ${BuildVersion}/jar_lambda_schedule.zip
@@ -270,6 +270,19 @@ Resources:
                 Effect: Allow
                 Action: iam:PassRole
                 Resource: !GetAtt JarExecutorRole.Arn
+        -
+          PolicyName: ListJars
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt InputBucket.Arn
+                Condition:
+                  StringEquals:
+                    s3:prefix:
+                      - jars/
   LambdaListJarsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -782,11 +795,14 @@ Resources:
               -
                 Effect: Allow
                 Action: s3:PutObject
-                Resource: !GetAtt OutputBucket.Arn
+                Resource: !Sub
+                  - ${OutputBucket}/*
+                  - OutputBucket: !GetAtt OutputBucket.Arn
   JarExecutorInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
-      Roles: !Ref JarExecutorRole
+      Roles:
+        - !Ref JarExecutorRole
 Outputs:
   InputBucketName:
     Value: !Ref InputBucket
@@ -800,7 +816,5 @@ Outputs:
     Value: !GetAtt WebsiteBucket.WebsiteURL
   JarApiID:
     Value: !Ref JarApi
-  AmiId1:
-    Value: !GetAtt AMICreate.AmiId
-  AmiId2:
-    Value: !Ref AMICreate
+  AmiId:
+    Value: !Ref JarExecutorAMI
