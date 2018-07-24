@@ -283,6 +283,17 @@ Resources:
                   StringEquals:
                     s3:prefix:
                       - jars/
+        -
+          PolicyName: PublishToQueue
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - sqs:SendMessage
+                  - sqs:GetQueueUrl
+                Resource: !GetAtt ScheduleQueue.Arn
   LambdaListJarsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -798,6 +809,20 @@ Resources:
                 Resource: !Sub
                   - ${OutputBucket}/*
                   - OutputBucket: !GetAtt OutputBucket.Arn
+        -
+          PolicyName: RunExecutorInstance
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: ec2:RunInstances
+                Resource:
+                  # - !Join
+                  #   - ''
+                  #   - - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:image/
+                  #     - !Ref JarExecutorAMI # TODO: fix circular dependency
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
   JarExecutorInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:

@@ -2,7 +2,7 @@ set i = 0
 aws cloudformation delete-stack --stack-name jr$i ; @ i++ ; ./compile_stack.py && aws cloudformation create-stack --capabilities CAPABILITY_IAM --template-body file://JarRunnerStackCompiled.yaml --stack-name jr$i
 aws cloudformation delete-stack --stack-name jr$i ; ((i++)) ; ./compile_stack.py && aws cloudformation create-stack --capabilities CAPABILITY_IAM --template-body file://JarRunnerStackCompiled.yaml --stack-name jr$i
 
-aws cloudformation delete-stack --stack-name jr$i ; @ i++ ; aws cloudformation create-stack --capabilities CAPABILITY_IAM --template-body file://JarRunnerStackIn.yaml --stack-name jr$i
-aws cloudformation delete-stack --stack-name jr$i ; ((i++)) ; aws cloudformation create-stack --capabilities CAPABILITY_IAM --template-body file://JarRunnerStackIn.yaml --stack-name jr$i
+aws cloudformation delete-stack --stack-name jr$i ; @ i++ ; aws cloudformation create-stack --capabilities CAPABILITY_IAM --template-body file://JarRunnerStack.yaml --stack-name jr$i
+aws cloudformation delete-stack --stack-name jr$i ; ((i++)) ; aws cloudformation create-stack --capabilities CAPABILITY_IAM --template-body file://JarRunnerStack.yaml --stack-name jr$i
 
 for lg in `aws logs describe-log-groups |grep logGroupName |grep /aws/lambda/jr |sed 's/.*: "//' | sed 's/",//' | tr "\n" " "`; do aws logs delete-log-group --log-group-name $lg; done
