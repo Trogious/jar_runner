@@ -4,10 +4,21 @@ Parameters:
     Type: String
     Default: jar-runner-builds
     Description: Bucket with source for website and lambdas.
+  BuildVersion:
+    Type: String
+    Default: latest
+    Description: Build version to use.
   JarApiStage:
     Type: String
     Default: prod
     Description: Stage for API Deployment
+  ExecutorInstanceType:
+    Type: String
+    Default: t2.micro
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+    Description: Instance type to use for executing jars.
 Mappings:
   RegionMap:
     ap-south-1:
@@ -124,7 +135,7 @@ Resources:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: latest/jar_lambda_auth.zip
+        S3Key: !Sub ${BuildVersion}/jar_lambda_auth.zip
   LambdaNewPassFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -136,7 +147,7 @@ Resources:
           JAR_LAMBDA_AUTH_CLIENT_ID: !Ref JarUserPoolClient
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: latest/jar_lambda_newpass.zip
+        S3Key: !Sub ${BuildVersion}/jar_lambda_newpass.zip
   LambdaListJarsFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -148,16 +159,23 @@ Resources:
           JAR_LAMBDA_LIST_JARS_BUCKET: !Ref InputBucket
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: latest/jar_lambda_list_jars.zip
+        S3Key: !Sub ${BuildVersion}/jar_lambda_list_jars.zip
   LambdaScheduleFuction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
       Handler: index.handler
       Role: !GetAtt LambdaScheduleRole.Arn
+      JarExecutorInstanceProfile
+      Environment:
+        Variables:
+          JAR_LAMBDA_QUEUE_NAME: !Ref ScheduleQueue
+          JAR_LAMBDA_INSTANCE_PROFILE_ARN: !GetAtt JarExecutorInstanceProfile.Arn
+          JAR_LAMBDA_AMI_ID: !GetAtt AMICreate.AmiId
+          JAR_LAMBDA_EXECUTOR_INSTANCE_TYPE: !Ref ExecutorInstanceType
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: latest/jar_lambda_schedule.zip
+        S3Key: !Sub ${BuildVersion}/jar_lambda_schedule.zip
   LambdaNotifyFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -167,10 +185,10 @@ Resources:
       Environment:
         Variables:
           JAR_LAMBDA_NOTIFY_SNS_ARN: !Ref NotifyTopic
-          JAR_LAMBDA_OUTPUT_BUCKET: "x" # TODO: remove, this will be get from lambda's context
+          JAR_LAMBDA_OUTPUT_BUCKET: "x" # TODO: remove, this will be get from lambda's context/event???
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: latest/jar_lambda_notify.zip
+        S3Key: !Sub ${BuildVersion}/jar_lambda_notify.zip
   PermissionForS3ToInvokeLambdaNotify:
     Type: AWS::Lambda::Permission
     Properties:
@@ -211,42 +229,6 @@ Resources:
               -
                 Effect: Allow
                 Action: s3:GetObject
-                Resource: !GetAtt OutputBucket.Arn
-  JarExecutorRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Version: 2012-10-17
-        Statement:
-          -
-            Effect: Allow
-            Principal:
-              Service:
-                - ec2.amazonaws.com
-            Action:
-              - sts:AssumeRole
-      Policies:
-        -
-          PolicyName: S3GetJar
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              -
-                Effect: Allow
-                Action: s3:GetObject
-                Resource: !GetAtt InputBucket.Arn
-                Condition:
-                  StringEquals:
-                    s3:prefix:
-                      - jars/
-        -
-          PolicyName: S3PutResults
-          PolicyDocument:
-            Version: 2012-10-17
-            Statement:
-              -
-                Effect: Allow
-                Action: s3:PutObject
                 Resource: !GetAtt OutputBucket.Arn
   LambdaAuthRole:
     Type: AWS::IAM::Role
@@ -659,7 +641,7 @@ Resources:
       StackName: !Sub ${AWS::StackName}
       WebsiteBucket: !Ref WebsiteBucket
       WebsiteSourceBucket: !Ref BuildsSourceBucket
-      WebsiteSourceKey: latest/jar_website.zip
+      WebsiteSourceKey: !Sub ${BuildVersion}/jar_website.zip
       ApiEndpoints:
         -
           Name: JAR_API_ENDPOINT_AUTH
@@ -745,7 +727,7 @@ Resources:
       Timeout: 300
       Code:
         S3Bucket: !Ref BuildsSourceBucket
-        S3Key: latest/jar_lambda_ami.zip
+        S3Key: !Sub ${BuildVersion}/jar_lambda_ami.zip
   AMICreatorInstance:
     Type: AWS::EC2::Instance
     Properties:
@@ -759,10 +741,52 @@ Resources:
         - Key: Name
           Value: !Sub CreateAMIInstance-${AWS::StackName}
       UserData:
-        Fn::Base64: !Sub
-          - |
-            jar_boot_ami_creator.sh
-          - OutputBucket: !Ref OutputBucket
+        Fn::Base64: !Sub |
+          #!/bin/sh -
+          #yum install -y python3 java-1.8.0-openjdk.x86_64
+          #pip3 install boto3
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --region ${AWS::Region} --resource AMICreate
+          /usr/sbin/poweroff
+  JarExecutorRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: S3GetJar
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:GetObject
+                Resource: !GetAtt InputBucket.Arn
+                Condition:
+                  StringEquals:
+                    s3:prefix:
+                      - jars/
+        -
+          PolicyName: S3PutResults
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:PutObject
+                Resource: !GetAtt OutputBucket.Arn
+  JarExecutorInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: !Ref JarExecutorRole
 Outputs:
   InputBucketName:
     Value: !Ref InputBucket
@@ -776,3 +800,7 @@ Outputs:
     Value: !GetAtt WebsiteBucket.WebsiteURL
   JarApiID:
     Value: !Ref JarApi
+  AmiId1:
+    Value: !GetAtt AMICreate.AmiId
+  AmiId2:
+    Value: !Ref AMICreate

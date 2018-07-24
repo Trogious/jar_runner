@@ -96,7 +96,7 @@ def handler(event, context):
                     ec2.Snapshot(snapshot).create_tags(Tags=[{'Key': 'Name', 'Value': 'JarRunnerSnapshot-' + stack_name}])
             ec2client.terminate_instances(InstanceIds=[instanceId])
             further_setup(event)
-            success({'Msg': 'AMI created: %s' % ami_name})
+            success({'Msg': 'AMI created: %s' % ami_name, 'AmiId': physicalId})
         else:
             success({'Msg': 'Unknown RequestType'})
     except Exception as e:
