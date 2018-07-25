@@ -48,7 +48,7 @@ def handler(event, context):
                                 body = body.replace(ep['Name'].encode('ascii'), ep['URL'].encode('ascii'))
                         s3.put_object(Bucket=website_bucket_name, Key=f_name, Body=body)
             logger.info('Uploaded website from: %s/%s\n' % (website_in_bucket, website_in_key))
-            success({'Msg': 'Uploaded website from: %s/%s\n' % (website_in_bucket, website_in_key)})
+            success({'Msg': 'Uploaded website from: %s/%s' % (website_in_bucket, website_in_key)})
         else:
             success({'Msg': 'Unknown RequestType'})
 

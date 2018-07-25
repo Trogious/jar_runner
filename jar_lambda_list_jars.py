@@ -27,6 +27,7 @@ def handler(event, context):
             s3 = boto3.client('s3')
             objects = s3.list_objects(Bucket=bucket, Prefix='jars/')
             if 'Contents' in objects.keys():
+                print(objects)
                 for key in objects['Contents']:
                     if key['Key'].endswith('.jar'):
                         objs.append(key['Key'].replace('jars/', ''))

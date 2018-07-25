@@ -28,14 +28,17 @@ def send_to_queue(queue_name, jar_name):
     return queue.send_message(MessageBody='{"name":"' + jar_name + '"}')
 
 
-def create_user_data():
-    with open('./jar_ec2_execute.py', 'r') as f:
-        pass
-    return '/usr/sbin/poweroff'
-
-
 def get_user_data():
-    return create_user_data()
+    ENCODING = 'utf8'
+    user_data = ''
+    with open('./jar_ec2_execute.py', 'rb') as f:
+        executor = base64.b64encode(f.read()).decode(ENCODING)
+        user_data += "echo '" + executor + "' | base64 -d - > /home/ec2-user/jar_ec2_execute.py\n"
+    user_data += 'chmod 700 /home/ec2-user/jar_ec2_execute.py\n'
+    user_data += 'chown ec2-user:ec2-user /home/ec2-user/jar_ec2_execute.py\n'
+    user_data += 'su - ec2-user -c /home/ec2-user/jar_ec2_execute.py\n'
+    user_data += '/usr/sbin/poweroff\n'
+    return user_data
 
 
 def launch_instance(ami_id, instance_type, instance_profile_arn):
