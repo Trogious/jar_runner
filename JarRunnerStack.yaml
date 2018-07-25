@@ -649,16 +649,10 @@ Resources:
       UserPoolId: !Ref JarCognitoUserPool
       ExplicitAuthFlows:
         - USER_PASSWORD_AUTH
-  AMICreate:
-    Type: AWS::CloudFormation::WaitCondition
-    CreationPolicy:
-      ResourceSignal:
-        Timeout: PT10M
-  JarExecutorAMI:
-    Type: Custom::AMI
-    DependsOn: AMICreate
+  WebsiteSetup:
+    Type: Custom::Website
     Properties:
-      ServiceToken: !GetAtt LambdaAMIFuction.Arn
+      ServiceToken: !GetAtt LambdaWebsiteFuction.Arn
       InstanceId: !Ref AMICreatorInstance
       OutputBucket: !Ref OutputBucket
       LambdaNotifyArn: !GetAtt LambdaNotifyFuction.Arn
@@ -687,6 +681,62 @@ Resources:
           URL: !Sub
             - https://${ApiID}.execute-api.${AWS::Region}.amazonaws.com/${JarApiStage}/list-jars
             - ApiID: !Ref JarApi
+  LambdaWebsiteRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Policies:
+        -
+          PolicyName: WebsiteBucketPermissions
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !GetAtt WebsiteBucket.Arn
+              -
+                Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:DeleteObject
+                Resource: !Sub
+                  - ${WebsiteBucket}/*
+                  - WebsiteBucket: !GetAtt WebsiteBucket.Arn
+  LambdaWebsiteFuction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.6
+      Handler: index.handler
+      Role: !GetAtt LambdaWebsiteRole.Arn
+      Timeout: 300
+      Code:
+        S3Bucket: !Ref BuildsSourceBucket
+        S3Key: !Sub ${BuildVersion}/jar_lambda_website.zip
+  AMICreate:
+    Type: AWS::CloudFormation::WaitCondition
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT10M
+  JarExecutorAMI:
+    Type: Custom::AMI
+    DependsOn: AMICreate
+    Properties:
+      ServiceToken: !GetAtt LambdaAMIFuction.Arn
+      InstanceId: !Ref AMICreatorInstance
+      OutputBucket: !Ref OutputBucket
+      LambdaNotifyArn: !GetAtt LambdaNotifyFuction.Arn
+      StackName: !Sub ${AWS::StackName}
   LambdaAMIRole:
     Type: AWS::IAM::Role
     Properties:
@@ -730,18 +780,6 @@ Resources:
                 Effect: Allow
                 Action: s3:PutBucketNotification
                 Resource: !GetAtt OutputBucket.Arn
-              -
-                Effect: Allow
-                Action: s3:ListBucket
-                Resource: !GetAtt WebsiteBucket.Arn
-              -
-                Effect: Allow
-                Action:
-                  - s3:PutObject
-                  - s3:DeleteObject
-                Resource: !Sub
-                  - ${WebsiteBucket}/*
-                  - WebsiteBucket: !GetAtt WebsiteBucket.Arn
   LambdaAMIFuction:
     Type: AWS::Lambda::Function
     Properties:
@@ -767,8 +805,8 @@ Resources:
       UserData:
         Fn::Base64: !Sub |
           #!/bin/sh -
-          #yum install -y python3 java-1.8.0-openjdk.x86_64
-          #pip3 install boto3
+          yum install -y python3 java-1.8.0-openjdk.x86_64
+          pip3 install boto3
           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --region ${AWS::Region} --resource AMICreate
           /usr/sbin/poweroff
   JarExecutorRole:
@@ -818,10 +856,10 @@ Resources:
                 Effect: Allow
                 Action: ec2:RunInstances
                 Resource:
-                  # - !Join
-                  #   - ''
-                  #   - - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:image/
-                  #     - !Ref JarExecutorAMI # TODO: fix circular dependency
+                  - !Join
+                    - ''
+                    - - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:image/
+                      - !Ref JarExecutorAMI # TODO: fix circular dependency
                   - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
   JarExecutorInstanceProfile:
     Type: AWS::IAM::InstanceProfile
