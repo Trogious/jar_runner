@@ -305,7 +305,9 @@ Resources:
             Statement:
               -
                 Effect: Allow
-                Action: ec2:RunInstances
+                Action:
+                  - ec2:RunInstances
+                  - ec2:CreateTags
                 Resource:
                   - !Join
                     - ''
@@ -855,7 +857,7 @@ Resources:
                 Action: s3:GetObject
                 Resource: !Sub
                   - ${InputBucket}/jars/*
-                  - OutputBucket: !GetAtt InputBucket.Arn
+                  - InputBucket: !GetAtt InputBucket.Arn
         -
           PolicyName: S3PutResults
           PolicyDocument:
@@ -876,8 +878,8 @@ Resources:
                 Effect: Allow
                 Action:
                   - sqs:ReceiveMessage
-                  - sqs:GetQu eueUrl
-                  -   sqs:DeleteMessage
+                  - sqs:DeleteMessage
+                  - sqs:GetQueueUrl
                 Resource: !GetAtt ScheduleQueue.Arn
   JarExecutorInstanceProfile:
     Type: AWS::IAM::InstanceProfile

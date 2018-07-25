@@ -50,7 +50,7 @@ def launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, buc
     ec2 = boto3.client('ec2')
     resp = ec2.run_instances(ImageId=ami_id, InstanceType=instance_type, MinCount=1, MaxCount=1, InstanceInitiatedShutdownBehavior='terminate',  # KeyName='MyEC3Key',  # NetworkInterfaces=[{'AssociatePublicIpAddress': False, 'DeviceIndex': 0}],
                              IamInstanceProfile={'Arn': instance_profile_arn}, UserData=get_user_data(bucket_in, bucket_out, queue_name, region),
-                             TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'name': 'name', 'value': 'JarExecutor-' + stack_name}]}])
+                             TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'Key': 'Name', 'Value': 'JarExecutor-' + stack_name}]}])
     return resp['Instances'][0]['InstanceId']
 
 
