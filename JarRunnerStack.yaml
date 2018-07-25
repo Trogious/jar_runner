@@ -124,7 +124,7 @@ Resources:
             Resource: !Sub
               - ${WebsiteBucket}/*
               - WebsiteBucket: !GetAtt WebsiteBucket.Arn
-  LambdaAuthFuction:
+  LambdaAuthFunction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
@@ -136,7 +136,7 @@ Resources:
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: !Sub ${BuildVersion}/jar_lambda_auth.zip
-  LambdaNewPassFuction:
+  LambdaNewPassFunction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
@@ -148,7 +148,7 @@ Resources:
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: !Sub ${BuildVersion}/jar_lambda_newpass.zip
-  LambdaListJarsFuction:
+  LambdaListJarsFunction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
@@ -160,7 +160,7 @@ Resources:
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: !Sub ${BuildVersion}/jar_lambda_list_jars.zip
-  LambdaScheduleFuction:
+  LambdaScheduleFunction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
@@ -169,15 +169,17 @@ Resources:
       Environment:
         Variables:
           JAR_LAMBDA_QUEUE_NAME: !GetAtt ScheduleQueue.QueueName
-          JAR_LAMBDA_LIST_JARS_BUCKET: !Ref InputBucket
+          JAR_LAMBDA_BUCKET_IN: !Ref InputBucket
+          JAR_LAMBDA_BUCKET_OUT: !Ref OutputBucket
           JAR_LAMBDA_EXECUTOR_INSTANCE_TYPE: !Ref ExecutorInstanceType
           JAR_LAMBDA_INSTANCE_PROFILE_ARN: !GetAtt JarExecutorInstanceProfile.Arn
           JAR_LAMBDA_AMI_ID: !Ref JarExecutorAMI
           JAR_LAMBDA_STACK_NAME: !Sub ${AWS::StackName}
+          JAR_LAMBDA_REGION: !Sub ${AWS::Region}
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: !Sub ${BuildVersion}/jar_lambda_schedule.zip
-  LambdaNotifyFuction:
+  LambdaNotifyFunction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
@@ -186,7 +188,6 @@ Resources:
       Environment:
         Variables:
           JAR_LAMBDA_NOTIFY_SNS_ARN: !Ref NotifyTopic
-          JAR_LAMBDA_OUTPUT_BUCKET: "x" # TODO: remove, this will be get from lambda's context/event???
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: !Sub ${BuildVersion}/jar_lambda_notify.zip
@@ -194,7 +195,7 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt LambdaNotifyFuction.Arn
+      FunctionName: !GetAtt LambdaNotifyFunction.Arn
       Principal: s3.amazonaws.com
       SourceArn: !GetAtt OutputBucket.Arn
   LambdaNotifyRole:
@@ -230,7 +231,9 @@ Resources:
               -
                 Effect: Allow
                 Action: s3:GetObject
-                Resource: !GetAtt OutputBucket.Arn
+                Resource: !Sub
+                  - ${OutputBucket}/*
+                  - OutputBucket: !GetAtt OutputBucket.Arn
   LambdaAuthRole:
     Type: AWS::IAM::Role
     Properties:
@@ -374,7 +377,7 @@ Resources:
                 uri: !Join
                   - ''
                   - - !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/
-                    - !GetAtt LambdaAuthFuction.Arn
+                    - !GetAtt LambdaAuthFunction.Arn
                     - /invocations
                 passthroughBehavior: WHEN_NO_MATCH
                 contentHandling: CONVERT_TO_TEXT
@@ -434,7 +437,7 @@ Resources:
                 uri: !Join
                   - ''
                   - - !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/
-                    - !GetAtt LambdaNewPassFuction.Arn
+                    - !GetAtt LambdaNewPassFunction.Arn
                     - /invocations
                 passthroughBehavior: WHEN_NO_MATCH
                 contentHandling: CONVERT_TO_TEXT
@@ -496,7 +499,7 @@ Resources:
                 uri: !Join
                   - ''
                   - - !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/
-                    - !GetAtt LambdaListJarsFuction.Arn
+                    - !GetAtt LambdaListJarsFunction.Arn
                     - /invocations
                 passthroughBehavior: WHEN_NO_MATCH
                 contentHandling: CONVERT_TO_TEXT
@@ -558,7 +561,7 @@ Resources:
                 uri: !Join
                   - ''
                   - - !Sub arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/
-                    - !GetAtt LambdaScheduleFuction.Arn
+                    - !GetAtt LambdaScheduleFunction.Arn
                     - /invocations
                 passthroughBehavior: WHEN_NO_MATCH
                 contentHandling: CONVERT_TO_TEXT
@@ -619,7 +622,7 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt LambdaAuthFuction.Arn
+      FunctionName: !GetAtt LambdaAuthFunction.Arn
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub
         - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiID}/*/*/auth
@@ -628,7 +631,7 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt LambdaListJarsFuction.Arn
+      FunctionName: !GetAtt LambdaListJarsFunction.Arn
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub
         - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiID}/*/*/list-jars
@@ -637,7 +640,7 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt LambdaNewPassFuction.Arn
+      FunctionName: !GetAtt LambdaNewPassFunction.Arn
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub
         - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiID}/*/*/newpass
@@ -646,7 +649,7 @@ Resources:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
-      FunctionName: !GetAtt LambdaScheduleFuction.Arn
+      FunctionName: !GetAtt LambdaScheduleFunction.Arn
       Principal: apigateway.amazonaws.com
       SourceArn: !Sub
         - arn:${AWS::Partition}:execute-api:${AWS::Region}:${AWS::AccountId}:${ApiID}/*/*/schedule
@@ -671,10 +674,10 @@ Resources:
   WebsiteSetup:
     Type: Custom::Website
     Properties:
-      ServiceToken: !GetAtt LambdaWebsiteFuction.Arn
+      ServiceToken: !GetAtt LambdaWebsiteFunction.Arn
       InstanceId: !Ref AMICreatorInstance
       OutputBucket: !Ref OutputBucket
-      LambdaNotifyArn: !GetAtt LambdaNotifyFuction.Arn
+      LambdaNotifyArn: !GetAtt LambdaNotifyFunction.Arn
       StackName: !Sub ${AWS::StackName}
       WebsiteBucket: !Ref WebsiteBucket
       WebsiteSourceBucket: !Ref BuildsSourceBucket
@@ -732,7 +735,7 @@ Resources:
                 Resource: !Sub
                   - ${WebsiteBucket}/*
                   - WebsiteBucket: !GetAtt WebsiteBucket.Arn
-  LambdaWebsiteFuction:
+  LambdaWebsiteFunction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
@@ -751,10 +754,10 @@ Resources:
     Type: Custom::AMI
     DependsOn: AMICreate
     Properties:
-      ServiceToken: !GetAtt LambdaAMIFuction.Arn
+      ServiceToken: !GetAtt LambdaAMIFunction.Arn
       InstanceId: !Ref AMICreatorInstance
       OutputBucket: !Ref OutputBucket
-      LambdaNotifyArn: !GetAtt LambdaNotifyFuction.Arn
+      LambdaNotifyArn: !GetAtt LambdaNotifyFunction.Arn
       StackName: !Sub ${AWS::StackName}
   LambdaAMIRole:
     Type: AWS::IAM::Role
@@ -799,7 +802,7 @@ Resources:
                 Effect: Allow
                 Action: s3:PutBucketNotification
                 Resource: !GetAtt OutputBucket.Arn
-  LambdaAMIFuction:
+  LambdaAMIFunction:
     Type: AWS::Lambda::Function
     Properties:
       Runtime: python3.6
@@ -850,11 +853,9 @@ Resources:
               -
                 Effect: Allow
                 Action: s3:GetObject
-                Resource: !GetAtt InputBucket.Arn
-                Condition:
-                  StringEquals:
-                    s3:prefix:
-                      - jars/
+                Resource: !Sub
+                  - ${InputBucket}/jars/*
+                  - OutputBucket: !GetAtt InputBucket.Arn
         -
           PolicyName: S3PutResults
           PolicyDocument:
@@ -867,13 +868,16 @@ Resources:
                   - ${OutputBucket}/*
                   - OutputBucket: !GetAtt OutputBucket.Arn
         -
-          PolicyName: PollQueue
+          PolicyName: PollQueueAndDelete
           PolicyDocument:
             Version: 2012-10-17
             Statement:
               -
                 Effect: Allow
-                Action: sqs:ReceiveMessage
+                Action:
+                  - sqs:ReceiveMessage
+                  - sqs:GetQu eueUrl
+                  -   sqs:DeleteMessage
                 Resource: !GetAtt ScheduleQueue.Arn
   JarExecutorInstanceProfile:
     Type: AWS::IAM::InstanceProfile

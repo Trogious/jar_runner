@@ -6,8 +6,6 @@ import datetime
 import os
 import tarfile
 
-BUCKET_NAME_IN = 'rtp-input-jars'
-BUCKET_NAME_OUT = 'rtp-output-results'
 PREFIX_DIR = './results_'
 RESULTS_OUT = 'results_out.txt'
 RESULTS_ERR = 'results_diag.txt'
@@ -35,7 +33,7 @@ def execute_jar(jar):
         with open(prefix_dir + RESULTS_ERR, 'wb') as fe:
             s3 = boto3.resource('s3')
             print('downloading')
-            s3.meta.client.download_file(BUCKET_NAME_IN, 'jars/' + jar, './' + jar)
+            s3.meta.client.download_file('BUCKET_NAME_IN', 'jars/' + jar, './' + jar)
             print('executing')
             with subprocess.Popen(['java', '-jar', './' + jar], stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
                 out, err = p.communicate()
@@ -51,14 +49,14 @@ def execute_jar(jar):
     results_archive = compress_results(prefix_dir)
     print(results_archive)
     print('uploading')
-    s3.meta.client.upload_file(results_archive, BUCKET_NAME_OUT, os.path.basename(results_archive))
+    s3.meta.client.upload_file(results_archive, 'BUCKET_NAME_OUT', os.path.basename(results_archive))
     print('uploaded')
 
 
 def main():
-    sqs = boto3.resource('sqs', region_name='eu-central-1')
+    sqs = boto3.resource('sqs', region_name='REGION')
     try:
-        queue = sqs.get_queue_by_name(QueueName='rtp_queue_schedule')
+        queue = sqs.get_queue_by_name(QueueName='QUEUE_NAME')
         for message in queue.receive_messages(MaxNumberOfMessages=1, WaitTimeSeconds=10):
             body = message.body
             message.delete()
