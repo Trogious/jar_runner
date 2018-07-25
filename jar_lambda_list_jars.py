@@ -25,9 +25,11 @@ def handler(event, context):
         try:
             objs = []
             s3 = boto3.client('s3')
-            for key in s3.list_objects(Bucket=bucket, Prefix='jars/')['Contents']:
-                if key['Key'].endswith('.jar'):
-                    objs.append(key['Key'].replace('jars/', ''))
+            objects = s3.list_objects(Bucket=bucket, Prefix='jars/')
+            if 'Contents' in objects.keys():
+                for key in objects['Contents']:
+                    if key['Key'].endswith('.jar'):
+                        objs.append(key['Key'].replace('jars/', ''))
             resp = response({'jars': objs}, 200)
         except Exception as e:
             resp = get_error_resp(e)
