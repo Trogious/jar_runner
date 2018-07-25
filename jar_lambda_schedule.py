@@ -74,7 +74,7 @@ def handler(event, context):
                 if key['Key'].endswith('.jar'):
                     if key['Key'].replace('jars/', '') == jar_name:
                         queue_resp = send_to_queue(queue_name, jar_name)
-                        instance_id = launch_instance()
+                        instance_id = launch_instance(ami_id, instance_type, instance_profile_arn)
                         resp = response({'status': 'scheduled ' + queue_resp.get('MessageId') + ' ' + instance_id}, 200)
                         break
         except Exception as e:
