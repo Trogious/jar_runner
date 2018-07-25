@@ -41,10 +41,11 @@ def get_user_data():
     return user_data
 
 
-def launch_instance(ami_id, instance_type, instance_profile_arn):
+def launch_instance(ami_id, instance_type, instance_profile_arn, stack_name):
     ec2 = boto3.client('ec2')
     resp = ec2.run_instances(ImageId=ami_id, InstanceType=instance_type, MinCount=1, MaxCount=1, InstanceInitiatedShutdownBehavior='terminate',  # KeyName='MyEC3Key',  # NetworkInterfaces=[{'AssociatePublicIpAddress': False, 'DeviceIndex': 0}],
-                             IamInstanceProfile={'Arn': instance_profile_arn}, UserData=get_user_data(), TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'name': 'name', 'value': 'JarExecutor-'}]}])
+                             IamInstanceProfile={'Arn': instance_profile_arn}, UserData=get_user_data(),
+                             TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'name': 'name', 'value': 'JarExecutor-' + stack_name}]}])
     return resp['Instances'][0]['InstanceId']
 
 
@@ -55,6 +56,7 @@ def handler(event, context):
     instance_profile_arn = os.getenv('JAR_LAMBDA_INSTANCE_PROFILE_ARN')
     ami_id = os.getenv('JAR_LAMBDA_AMI_ID')
     instance_type = os.getenv('JAR_LAMBDA_EXECUTOR_INSTANCE_TYPE')
+    stack_name = os.getenv('JAR_LAMBDA_STACK_NAME')
     if bucket is None:
         resp = get_error_resp('BUCKET not provided')
     elif queue_name is None:
@@ -65,6 +67,8 @@ def handler(event, context):
         resp = get_error_resp('AMI_ID not provided')
     elif instance_type is None:
         resp = get_error_resp('INSTANCE_TYPE not provided')
+    elif stack_name is None:
+        resp = get_error_resp('STACK not provided')
     elif event is not None and 'body' in event.keys():
         try:
             body = json.loads(event['body'])
@@ -74,7 +78,7 @@ def handler(event, context):
                 if key['Key'].endswith('.jar'):
                     if key['Key'].replace('jars/', '') == jar_name:
                         queue_resp = send_to_queue(queue_name, jar_name)
-                        instance_id = launch_instance(ami_id, instance_type, instance_profile_arn)
+                        instance_id = launch_instance(ami_id, instance_type, instance_profile_arn, stack_name)
                         resp = response({'status': 'scheduled ' + queue_resp.get('MessageId') + ' ' + instance_id}, 200)
                         break
         except Exception as e:

@@ -173,6 +173,7 @@ Resources:
           JAR_LAMBDA_EXECUTOR_INSTANCE_TYPE: !Ref ExecutorInstanceType
           JAR_LAMBDA_INSTANCE_PROFILE_ARN: !GetAtt JarExecutorInstanceProfile.Arn
           JAR_LAMBDA_AMI_ID: !Ref JarExecutorAMI
+          JAR_LAMBDA_STACK_NAME: !Sub ${AWS::StackName}
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: !Sub ${BuildVersion}/jar_lambda_schedule.zip
