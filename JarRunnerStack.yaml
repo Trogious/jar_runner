@@ -891,4 +891,4 @@ Outputs:
   WebsiteURL:
     Value: !GetAtt WebsiteBucket.WebsiteURL
   NotifyTopic:
-    Value: !Ref NotifyTopic
+    Value: !GetAtt NotifyTopic.TopicName

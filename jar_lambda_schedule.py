@@ -30,7 +30,7 @@ def send_to_queue(queue_name, jar_name):
 
 def get_user_data():
     ENCODING = 'utf8'
-    user_data = '#!/bin/sh -'
+    user_data = '#!/bin/sh -\n'
     with open('./jar_ec2_execute.py', 'rb') as f:
         executor = base64.b64encode(f.read()).decode(ENCODING)
         user_data += "echo '" + executor + "' | base64 -d - > /home/ec2-user/jar_ec2_execute.py\n"
@@ -44,7 +44,7 @@ def get_user_data():
 def launch_instance(ami_id, instance_type, instance_profile_arn):
     ec2 = boto3.client('ec2')
     resp = ec2.run_instances(ImageId=ami_id, InstanceType=instance_type, MinCount=1, MaxCount=1, InstanceInitiatedShutdownBehavior='terminate',  # KeyName='MyEC3Key',  # NetworkInterfaces=[{'AssociatePublicIpAddress': False, 'DeviceIndex': 0}],
-                             IamInstanceProfile={'Arn': instance_profile_arn}, UserData=get_user_data())
+                             IamInstanceProfile={'Arn': instance_profile_arn}, UserData=get_user_data(), TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'name': 'name', 'value': 'JarExecutor-'}]}])
     return resp['Instances'][0]['InstanceId']
 
 
