@@ -30,7 +30,7 @@ def send_to_queue(queue_name, jar_name):
 
 def get_user_data():
     ENCODING = 'utf8'
-    user_data = ''
+    user_data = '#!/bin/sh -'
     with open('./jar_ec2_execute.py', 'rb') as f:
         executor = base64.b64encode(f.read()).decode(ENCODING)
         user_data += "echo '" + executor + "' | base64 -d - > /home/ec2-user/jar_ec2_execute.py\n"

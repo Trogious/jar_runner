@@ -305,9 +305,13 @@ Resources:
                 Resource:
                   - !Join
                     - ''
-                    - - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:image/
+                    - - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}::image/
                       - !Ref JarExecutorAMI
                   - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:instance/*
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:subnet/*
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:volume/*
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:security-group/*
+                  - !Sub arn:${AWS::Partition}:ec2:${AWS::Region}:${AWS::AccountId}:network-interface/*
   LambdaListJarsRole:
     Type: AWS::IAM::Role
     Properties:
