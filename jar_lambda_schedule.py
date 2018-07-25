@@ -33,10 +33,10 @@ def get_user_data(bucket_in, bucket_out, queue_name, region):
     user_data = '#!/bin/sh -\n'
     with open('./jar_ec2_execute.py', 'rb') as f:
         executor = f.read()
-        executor = executor.replace('BUCKET_NAME_IN', bucket_in)
-        executor = executor.replace('BUCKET_NAME_OUT', bucket_out)
-        executor = executor.replace('QUEUE_NAME', queue_name)
-        executor = executor.replace('REGION', region)
+        executor = executor.replace(b'BUCKET_NAME_IN', bucket_in.encode(ENCODING))
+        executor = executor.replace(b'BUCKET_NAME_OUT', bucket_out.encode(ENCODING))
+        executor = executor.replace(b'QUEUE_NAME', queue_name.encode(ENCODING))
+        executor = executor.replace(b'REGION', region.encode(ENCODING))
         executor = base64.b64encode(executor).decode(ENCODING)
         user_data += "echo '" + executor + "' | base64 -d - > /home/ec2-user/jar_ec2_execute.py\n"
     user_data += 'chmod 700 /home/ec2-user/jar_ec2_execute.py\n'
@@ -62,6 +62,7 @@ def handler(event, context):
     ami_id = os.getenv('JAR_LAMBDA_AMI_ID')
     instance_type = os.getenv('JAR_LAMBDA_EXECUTOR_INSTANCE_TYPE')
     stack_name = os.getenv('JAR_LAMBDA_STACK_NAME')
+    # TODO: add to ifs
     bucket_out = os.getenv('JAR_LAMBDA_BUCKET_OUT')
     region = os.getenv('JAR_LAMBDA_REGION')
     if bucket_in is None:
