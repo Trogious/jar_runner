@@ -48,18 +48,15 @@ def get_user_data(bucket_in, bucket_out, queue_name, region):
 
 def get_instances_count(ec2, stack_name):
     count = 0
-    try:
-        inst = ec2.describe_instances()
-        for r in inst['Reservations']:
-            if 'Instances' in r.keys():
-                for i in r['Instances']:
-                    if int(i['State']['Code']) < 49:
-                        if 'Tags' in i.keys():
-                            for t in i['Tags']:
-                                if t['Key'] == 'Name' and t['Value'].endswith('JarExecutor-' + stack_name):
-                                    count += 1
-    except Exception:
-        count = 9999
+    inst = ec2.describe_instances()
+    for r in inst['Reservations']:
+        if 'Instances' in r.keys():
+            for i in r['Instances']:
+                if int(i['State']['Code']) != 48:
+                    if 'Tags' in i.keys():
+                        for t in i['Tags']:
+                            if t['Key'] == 'Name' and t['Value'] == 'JarExecutor-' + stack_name:
+                                count += 1
     return count
 
 
@@ -71,7 +68,7 @@ def launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, buc
                                  TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'Key': 'Name', 'Value': 'JarExecutor-' + stack_name}]}])
         return resp['Instances'][0]['InstanceId']
     else:
-        return None
+        raise Exception('executor instance limit reached, wait for previous executions to finish and then re-run')
 
 
 def handler(event, context):
@@ -113,10 +110,7 @@ def handler(event, context):
                     if key['Key'].replace('jars/', '') == jar_name:
                         queue_resp = send_to_queue(queue_name, jar_name)
                         instance_id = launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, bucket_in, bucket_out, queue_name, region, instance_limit)
-                        if instance_id is None:
-                            resp = response({'status': 'scheduled ' + queue_resp.get('MessageId') + ' ' + instance_id}, 200)
-                        else:
-                            resp = response({'status': 'cannot launch instance for ' + queue_resp.get('MessageId')}, 200)
+                        resp = response({'status': 'scheduled ' + queue_resp.get('MessageId') + ' ' + instance_id}, 200)
                         break
         except Exception as e:
             resp = get_error_resp(e)

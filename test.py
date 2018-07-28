@@ -44,15 +44,20 @@ def get_instances_count(ec2, stack_name):
         inst = ec2.describe_instances()
         for r in inst['Reservations']:
             for i in r['Instances']:
-                if int(i['State']['Code']) < 49:
+                print(i['InstanceId'])
+                if int(i['State']['Code']) != 48:
+                    print(i['State'])
                     if 'Tags' in i.keys():
                         for t in i['Tags']:
                             if t['Key'] == 'Name' and t['Value'].endswith('JarExecutor-' + stack_name):
                                 count += 1
     except Exception as e:
-        logger.info('Error describing instances: %s\n' % str(e))
+        print('Error describing instances: %s\n' % str(e))
     return count
 
 
 ec2 = boto3.client('ec2')
-print(get_instances_count(ec2, 'xx'))
+print(get_instances_count(ec2, 'jr2'))
+
+#instance_limit = int(os.getenv('JAR_LAMBDA_INSTANCE_LIMIT', 5))
+#print(instance_limit)
