@@ -23,17 +23,36 @@ def zip_website(path):
     return base64.b64encode(zipped_buf.getvalue())
 
 
-s3 = boto3.client('s3')
-r3 = boto3.resource('s3')
-try:
-    bt = b'asda'
-    print(bt.replace(b'a', b'b'))
-    for b in s3.list_buckets()['Buckets']:
-        if b['Name'].startswith('jr'):
-            b = r3.Bucket(b['Name'])
-            print(b)
-except s3.exceptions.NoSuchKey as e:
-    print('no such key')
-    print(e)
-except Exception as e:
-    print(e)
+# s3 = boto3.client('s3')
+# r3 = boto3.resource('s3')
+# try:
+#     bt = b'asda'
+#     print(bt.replace(b'a', b'b'))
+#     for b in s3.list_buckets()['Buckets']:
+#         if b['Name'].startswith('jr'):
+#             b = r3.Bucket(b['Name'])
+#             print(b)
+# except s3.exceptions.NoSuchKey as e:
+#     print('no such key')
+#     print(e)
+# except Exception as e:
+#     print(e)
+
+def get_instances_count(ec2, stack_name):
+    count = 0
+    try:
+        inst = ec2.describe_instances()
+        for r in inst['Reservations']:
+            for i in r['Instances']:
+                if int(i['State']['Code']) < 49:
+                    if 'Tags' in i.keys():
+                        for t in i['Tags']:
+                            if t['Key'] == 'Name' and t['Value'].endswith('JarExecutor-' + stack_name):
+                                count += 1
+    except Exception as e:
+        logger.info('Error describing instances: %s\n' % str(e))
+    return count
+
+
+ec2 = boto3.client('ec2')
+print(get_instances_count(ec2, 'xx'))

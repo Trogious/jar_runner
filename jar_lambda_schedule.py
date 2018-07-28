@@ -46,12 +46,32 @@ def get_user_data(bucket_in, bucket_out, queue_name, region):
     return user_data
 
 
-def launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, bucket_in, bucket_out, queue_name, region):
+def get_instances_count(ec2, stack_name):
+    count = 0
+    try:
+        inst = ec2.describe_instances()
+        for r in inst['Reservations']:
+            if 'Instances' in r.keys():
+                for i in r['Instances']:
+                    if int(i['State']['Code']) < 49:
+                        if 'Tags' in i.keys():
+                            for t in i['Tags']:
+                                if t['Key'] == 'Name' and t['Value'].endswith('JarExecutor-' + stack_name):
+                                    count += 1
+    except Exception:
+        count = 9999
+    return count
+
+
+def launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, bucket_in, bucket_out, queue_name, region, instance_limit):
     ec2 = boto3.client('ec2')
-    resp = ec2.run_instances(ImageId=ami_id, InstanceType=instance_type, MinCount=1, MaxCount=1, InstanceInitiatedShutdownBehavior='terminate',  # KeyName='MyEC3Key',  # NetworkInterfaces=[{'AssociatePublicIpAddress': False, 'DeviceIndex': 0}],
-                             IamInstanceProfile={'Arn': instance_profile_arn}, UserData=get_user_data(bucket_in, bucket_out, queue_name, region),
-                             TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'Key': 'Name', 'Value': 'JarExecutor-' + stack_name}]}])
-    return resp['Instances'][0]['InstanceId']
+    if get_instances_count(ec2, stack_name) < instance_limit:
+        resp = ec2.run_instances(ImageId=ami_id, InstanceType=instance_type, MinCount=1, MaxCount=1, InstanceInitiatedShutdownBehavior='terminate',  # KeyName='MyEC3Key',  # NetworkInterfaces=[{'AssociatePublicIpAddress': False, 'DeviceIndex': 0}],
+                                 IamInstanceProfile={'Arn': instance_profile_arn}, UserData=get_user_data(bucket_in, bucket_out, queue_name, region),
+                                 TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'Key': 'Name', 'Value': 'JarExecutor-' + stack_name}]}])
+        return resp['Instances'][0]['InstanceId']
+    else:
+        return None
 
 
 def handler(event, context):
@@ -62,9 +82,9 @@ def handler(event, context):
     ami_id = os.getenv('JAR_LAMBDA_AMI_ID')
     instance_type = os.getenv('JAR_LAMBDA_EXECUTOR_INSTANCE_TYPE')
     stack_name = os.getenv('JAR_LAMBDA_STACK_NAME')
-    # TODO: add to ifs
     bucket_out = os.getenv('JAR_LAMBDA_BUCKET_OUT')
     region = os.getenv('JAR_LAMBDA_REGION')
+    instance_limit = int(os.getenv('JAR_LAMBDA_INSTANCE_LIMIT', 5))
     if bucket_in is None:
         resp = get_error_resp('BUCKET not provided')
     elif queue_name is None:
@@ -77,6 +97,12 @@ def handler(event, context):
         resp = get_error_resp('INSTANCE_TYPE not provided')
     elif stack_name is None:
         resp = get_error_resp('STACK not provided')
+    elif bucket_out is None:
+        resp = get_error_resp('BUCKET_OUT not provided')
+    elif region is None:
+        resp = get_error_resp('REGION not provided')
+    elif instance_limit is None:
+        resp = get_error_resp('LIMIT not provided')
     elif event is not None and 'body' in event.keys():
         try:
             body = json.loads(event['body'])
@@ -86,8 +112,11 @@ def handler(event, context):
                 if key['Key'].endswith('.jar'):
                     if key['Key'].replace('jars/', '') == jar_name:
                         queue_resp = send_to_queue(queue_name, jar_name)
-                        instance_id = launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, bucket_in, bucket_out, queue_name, region)
-                        resp = response({'status': 'scheduled ' + queue_resp.get('MessageId') + ' ' + instance_id}, 200)
+                        instance_id = launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, bucket_in, bucket_out, queue_name, region, instance_limit)
+                        if instance_id is None:
+                            resp = response({'status': 'scheduled ' + queue_resp.get('MessageId') + ' ' + instance_id}, 200)
+                        else:
+                            resp = response({'status': 'cannot launch instance for ' + queue_resp.get('MessageId')}, 200)
                         break
         except Exception as e:
             resp = get_error_resp(e)
