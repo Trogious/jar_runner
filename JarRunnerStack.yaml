@@ -16,8 +16,10 @@ Parameters:
     Type: String
     Default: t2.micro
     AllowedValues:
-      - t2.nano
       - t2.micro
+      - c5.xlarge
+      - c5.2xlarge
+      - c5.4xlarge
     Description: Instance type to use for executing jars.
   ExecutorInstanceLimit:
     Type: Number
