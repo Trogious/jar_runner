@@ -170,6 +170,7 @@ Resources:
       Runtime: python3.6
       Handler: index.handler
       Role: !GetAtt LambdaScheduleRole.Arn
+      Timeout: 15
       Environment:
         Variables:
           JAR_LAMBDA_QUEUE_NAME: !GetAtt ScheduleQueue.QueueName
@@ -366,7 +367,6 @@ Resources:
           version: 1.0
           title: !Sub jar_runner_api-${AWS::StackName}
           description: !Sub Rest API for ${AWS::StackName}
-        # host: ejdx39j2jj.execute-api.eu-central-1.amazonaws.com
         basePath: !Sub /${JarApiStage}
         schemes:
         - https
@@ -378,6 +378,13 @@ Resources:
               responses:
                 '200':
                   description: 200 response
+                  schema:
+                    '$ref': '#/definitions/Empty'
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
+                default:
+                  description: other response
                   schema:
                     '$ref': '#/definitions/Empty'
                   headers:
@@ -396,6 +403,18 @@ Resources:
                 responses:
                   '200':
                     statusCode: 200
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: 'null'
+                  '4\\d{2}':
+                    statusCode: 400
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: 'null'
+                  '5\\d{2}':
+                    statusCode: 500
                     responseParameters:
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
@@ -443,6 +462,13 @@ Resources:
                   headers:
                     Access-Control-Allow-Origin:
                       type: string
+                default:
+                  description: other response
+                  schema:
+                    '$ref': '#/definitions/Empty'
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
               x-amazon-apigateway-integration:
                 type: AWS_PROXY
                 httpMethod: POST
@@ -456,6 +482,18 @@ Resources:
                 responses:
                   '200':
                     statusCode: 200
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: 'null'
+                  '4\\d{2}':
+                    statusCode: 400
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: 'null'
+                  '5\\d{2}':
+                    statusCode: 500
                     responseParameters:
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
@@ -503,6 +541,13 @@ Resources:
                   headers:
                     Access-Control-Allow-Origin:
                       type: string
+                default:
+                  description: other response
+                  schema:
+                    '$ref': '#/definitions/Empty'
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
               security:
               - jar_authorizer_cognito: []
               x-amazon-apigateway-integration:
@@ -518,6 +563,18 @@ Resources:
                 responses:
                   '200':
                     statusCode: 200
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: 'null'
+                  '4\\d{2}':
+                    statusCode: 400
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: 'null'
+                  '5\\d{2}':
+                    statusCode: 500
                     responseParameters:
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
@@ -565,6 +622,13 @@ Resources:
                   headers:
                     Access-Control-Allow-Origin:
                       type: string
+                default:
+                  description: other response
+                  schema:
+                    '$ref': '#/definitions/Empty'
+                  headers:
+                    Access-Control-Allow-Origin:
+                      type: string
               security:
               - jar_authorizer_cognito: []
               x-amazon-apigateway-integration:
@@ -580,6 +644,18 @@ Resources:
                 responses:
                   '200':
                     statusCode: 200
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: 'null'
+                  '4\\d{2}':
+                    statusCode: 400
+                    responseParameters:
+                      method.response.header.Access-Control-Allow-Origin: "'*'"
+                    responseTemplates:
+                      application/json: 'null'
+                  '5\\d{2}':
+                    statusCode: 500
                     responseParameters:
                       method.response.header.Access-Control-Allow-Origin: "'*'"
                     responseTemplates:
@@ -911,5 +987,3 @@ Outputs:
     Value: !GetAtt NotifyTopic.TopicName
   UserPool:
     Value: !Ref JarCognitoUserPool
-  UserPool2:
-    Value: !GetAtt JarCognitoUserPool.ProviderName
