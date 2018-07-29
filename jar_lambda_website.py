@@ -46,6 +46,7 @@ def handler(event, context):
                         if f_name.startswith('static/js/main') and f_name.endswith('.js'):
                             for ep in event['ResourceProperties']['ApiEndpoints']:
                                 body = body.replace(ep['Name'].encode('ascii'), ep['URL'].encode('ascii'))
+                            body = body.replace(event['ResourceProperties']['ExecParamConfig']['Name'].encode('ascii'), event['ResourceProperties']['ExecParamConfig']['Value'].encode('ascii'))
                         s3.put_object(Bucket=website_bucket_name, Key=f_name, Body=body)
             logger.info('Uploaded website from: %s/%s\n' % (website_in_bucket, website_in_key))
             success({'Msg': 'Uploaded website from: %s/%s' % (website_in_bucket, website_in_key)})

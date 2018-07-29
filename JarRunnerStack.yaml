@@ -1,4 +1,4 @@
-Description: Deploys entire environment for JarRunner
+Description: Deploys entire environment for JarRunner.
 Parameters:
   BuildsSourceBucket:
     Type: String
@@ -11,7 +11,7 @@ Parameters:
   JarApiStage:
     Type: String
     Default: prod
-    Description: Stage for API Deployment
+    Description: Stage for API Deployment.
   ExecutorInstanceType:
     Type: String
     Default: t2.micro
@@ -25,6 +25,10 @@ Parameters:
     Type: Number
     Default: 5
     Description: Maximum number of concurrently running instances.
+  ExecutionParameterConfiguration:
+    Type: String
+    Default: '{"params":[{"name":"threads","type":"int","min":1,"max":16,"default":8},{"name":"spins","type":"string","allowed":["500k","100m","500m","1b"],"default":"500m"}],"spacing":{"param":":","value":"="}}'
+    Description: Parameter configuration for jar execution.
 Mappings:
   RegionMap:
     ap-south-1:
@@ -772,6 +776,9 @@ Resources:
       WebsiteBucket: !Ref WebsiteBucket
       WebsiteSourceBucket: !Ref BuildsSourceBucket
       WebsiteSourceKey: !Sub ${BuildVersion}/jar_website.zip
+      ExecParamConfig:
+        Name: JAR_EXEC_PARAMS_CONFIG
+        Value: !Ref ExecutionParameterConfiguration
       ApiEndpoints:
         -
           Name: JAR_API_ENDPOINT_AUTH

@@ -12,12 +12,16 @@ export default class App extends React.Component {
       cachedToken = ''
     }
     const cachedJars = JSON.parse(localStorage.getItem('jars'));
+    // const cachedJars = JSON.parse('["SampleGame2.jar","SampleGame3.jar","SampleGame4.jar"]');
+    // cachedToken = 'x';
     this.state = { token: cachedToken, message: '', jars: cachedJars };
 
     this.list_url = 'JAR_API_ENDPOINT_LIST_JARS';
     this.auth_url = 'JAR_API_ENDPOINT_AUTH';
     this.newpass_url = 'JAR_API_ENDPOINT_NEWPASS';
     this.schedule_url = 'JAR_API_ENDPOINT_SCHEDULE';
+    this.params = JSON.parse('JAR_EXEC_PARAMS_CONFIG');
+    // this.params = JSON.parse('{"params":[{"name":"threads","type":"int","min":1,"max":16,"default":8},{"name":"spins","type":"string","allowed":["500k","100m","500m","1b"],"default":"500m"}],"spacing":{"param":":","value":"="}}');
   }
 
   fetchJarList() {
@@ -100,7 +104,18 @@ export default class App extends React.Component {
       return (
         <div>
           <div>
-            {this.state.jars.map((jar, i) => <Jar key={i} name={jar} submit={this.handleSubmitJar} />)}
+            <form onSubmit={this.handleSubmitJar}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Artifact</th>
+                    <th colSpan={this.params.params.length}>Parameters</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                {this.state.jars.map((jar, i) => <Jar key={i} name={jar} params={this.params} submit={this.handleSubmitJar} />)}
+              </table>
+            </form>
           </div>
           <div className="logout">
             <form onSubmit={() => {this.setState({ token: '' });localStorage.setItem('token', '');}}>
