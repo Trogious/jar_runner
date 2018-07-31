@@ -36,6 +36,8 @@ def handler(event, context):
             website_in_bucket = event['ResourceProperties']['WebsiteSourceBucket']
             website_in_key = event['ResourceProperties']['WebsiteSourceKey']
             website = s3.get_object(Bucket=website_in_bucket, Key=website_in_key)
+            param_config = event['ResourceProperties']['ExecParamConfig']['Value']
+            json.loads(param_config)  # verifies config json format validity
             zip_buf = io.BytesIO(website['Body'].read())
             with zipfile.ZipFile(zip_buf, 'r') as zip_file:
                 for f_name in zip_file.namelist():
@@ -46,12 +48,11 @@ def handler(event, context):
                         if f_name.startswith('static/js/main') and f_name.endswith('.js'):
                             for ep in event['ResourceProperties']['ApiEndpoints']:
                                 body = body.replace(ep['Name'].encode('ascii'), ep['URL'].encode('ascii'))
-                            body = body.replace(event['ResourceProperties']['ExecParamConfig']['Name'].encode('ascii'), event['ResourceProperties']['ExecParamConfig']['Value'].encode('ascii'))
+                            body = body.replace(event['ResourceProperties']['ExecParamConfig']['Name'].encode('ascii'), param_config.encode('ascii'))
                         s3.put_object(Bucket=website_bucket_name, Key=f_name, Body=body)
             logger.info('Uploaded website from: %s/%s\n' % (website_in_bucket, website_in_key))
             success({'Msg': 'Uploaded website from: %s/%s' % (website_in_bucket, website_in_key)})
         else:
             success({'Msg': 'Unknown RequestType'})
-
     except Exception as e:
         failed(e)

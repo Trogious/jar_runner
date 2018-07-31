@@ -26,6 +26,42 @@ def compress_results(dir_path):
     return archive
 
 
+def get_param_value(cfg, value, allowed=None):
+    val_type = cfg['type']
+    if val_type.lower() == 'int':
+        return str(int(value))
+    elif val_type.lower() == 'string':
+        if 'allowed' in cfg.keys():
+            found = False
+            for a in allowed:
+                if value == a:
+                    found = True
+                    break
+            if not found:
+                raise Exception('parameter value \'%s\' not allowed, continuing without parameters' % value)
+        return value
+    raise Exception('unknown parameter type \'%s\', continuing without parameters')
+
+
+def get_params_str():
+    params_config = json.loads('PARAMS_CONFIG')
+    param_values = json.loads('PARAM_VALUES')
+    params_str = None
+    spacing_val = params_config['spacing']['value']
+    spacing_param = params_config['spacing']['param']
+    i = 0
+    for cfg in params_config['params']:
+        name = cfg['name']
+        for val in param_values:
+            if name in val.keys():
+                if i > 0:
+                    params_str += spacing_param
+                params_str += name + spacing_val + get_param_value(cfg, val[name])
+                i += 1
+        pass
+    return None
+
+
 def execute_jar(jar):
     prefix_dir = PREFIX_DIR + jar.replace('.jar', '') + '_' + datetime.datetime.now().isoformat(sep='_')[:19].replace(':', '-') + '/'
     os.mkdir(prefix_dir, 0o700)
@@ -35,7 +71,15 @@ def execute_jar(jar):
             print('downloading')
             s3.meta.client.download_file('BUCKET_NAME_IN', 'jars/' + jar, './' + jar)
             print('executing')
-            with subprocess.Popen(['java', '-jar', './' + jar], stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
+            args = ['java', '-jar', './' + jar]
+            try:
+                params_str = get_params_str()
+                if params_str is not None:
+                    args.append(params_str)
+                    fe.write(params_str.encode('utf8'))
+            except Exception as e:
+                fe.write(str(e).encode('utf8'))
+            with subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as p:
                 out, err = p.communicate()
                 if out is None:
                     print('no output')

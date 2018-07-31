@@ -188,6 +188,7 @@ Resources:
           JAR_LAMBDA_STACK_NAME: !Sub ${AWS::StackName}
           JAR_LAMBDA_REGION: !Sub ${AWS::Region}
           JAR_LAMBDA_INSTANCE_LIMIT: !Ref ExecutorInstanceLimit
+          JAR_LAMBDA_PARAMS_CONFIG: !Ref ExecutionParameterConfiguration
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: !Sub ${BuildVersion}/jar_lambda_schedule.zip
