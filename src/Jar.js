@@ -1,6 +1,6 @@
 import React from 'react'
 import Param from './Param'
-import './Jar.css'
+import './Jar.scss'
 
 export default class Jar extends React.Component {
   constructor(props) {
@@ -13,7 +13,7 @@ export default class Jar extends React.Component {
     this.state = {...paramsValues};
   }
   getParamsString(name, params, spacing, idxWithValue, value) {
-    let paramsString = 'java -jar ' + name + ' ';
+    let paramsString = 'java -jar ./' + name + ' ';
     for (let i = 0; i < params.length; ++i) {
       if (i > 0) {
         paramsString += spacing.param;
@@ -29,25 +29,47 @@ export default class Jar extends React.Component {
     this.setState(paramValuePair);
   }
 
+  handleSubmit = (e) => {
+    const params = JSON.stringify(this.state);
+    this.props.submit(this.props.name, params);
+    e.preventDefault();
+  }
+
   render() {
     return (
-      <tbody>
-        <tr>
-          <td><input name='jar' type='hidden' value={this.props.name}/>{this.props.name}</td>
-          {this.props.params.params.map((param, i) => <Param key={i} paramIdx={i} jar={this.props.name} {...param} paramChanged={this.onChangeParam}/>)}
-          <td>
+      <div>
+        <div className="row">
+          <form onSubmit={this.handleSubmit}>
+          <div className="cell">
+            <div className="content">
+              <input name="jar" type="hidden" value={this.props.name}/>{this.props.name}
+            </div>
+          </div>
+          <div className="cell">
+            <div className="content">
+              {this.props.params.params.map((param, i) => <Param key={i} paramIdx={i} jar={this.props.name} {...param} paramChanged={this.onChangeParam}/>)}
+            </div>
+          </div>
+          <div className="cell">
+            <div className="content">
             <button>
               <span>Schedule Execution</span>
             </button>
-          </td>
-        </tr>
-        <tr>
-          <td colSpan={this.props.params.params.length+2} className='tdExecPrev'>
-            <p>Execution command preview:</p>
-            <pre className='exec_preview'>{this.getParamsString(this.props.name, this.props.params.params, this.props.params.spacing)}</pre>
-          </td>
-        </tr>
-      </tbody>
+            </div>
+          </div>
+        </form>
+        </div>
+        <div className="row rowno">
+          <div className="cell cell2">
+            <div className="content">
+              Execution command preview:
+              <div className="exec">
+               <pre className="preview">{this.getParamsString(this.props.name, this.props.params.params, this.props.params.spacing)}</pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 }

@@ -58,8 +58,8 @@ def get_params_str():
                     params_str += spacing_param
                 params_str += name + spacing_val + get_param_value(cfg, val[name])
                 i += 1
-        pass
-    return None
+    return params_str
+    # return None
 
 
 def execute_jar(jar):

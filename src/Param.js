@@ -17,30 +17,34 @@ export default class Param extends React.Component {
       case 'int':
         const defaultValue = this.props.default === undefined ? this.props.min : this.props.default;
         return (
-          <td>
-            {this.props.name}:
-            <input name={this.props.name} type='number' min={this.props.min} max={this.props.max} defaultValue={defaultValue} onChange={this.paramChangedInt}/>
-          </td>
+          <div className="param">
+            <div className="pname">{this.props.name}</div>
+            <div className="pvalue">
+              <input name={this.props.name} type="number" min={this.props.min} max={this.props.max} defaultValue={defaultValue} onChange={this.paramChangedInt}/>
+            </div>
+          </div>
         );
       default:
         if (this.props.allowed !== undefined && this.props.allowed.length > 0) {
           const defaultValue = this.props.default === undefined ? this.props.allowed[0] : this.props.default;
           return (
-            <td>
-              {this.props.name}:
-              <select name={this.props.name} defaultValue={defaultValue} onChange={this.paramChangedString}>
-                {this.props.allowed.map((value, i) => <option key={i} value={value}>{value}</option>)}
-              </select>
-            </td>
+            <div className="param">
+              <div className="pname">{this.props.name}</div>
+              <div className="pvalue">
+                <select name={this.props.name} defaultValue={defaultValue} onChange={this.paramChangedString}>
+                  {this.props.allowed.map((value, i) => <option key={i} value={value}>{value}</option>)}
+                </select>
+              </div>
+            </div>
           );
         }
         else {
           const defaultValue = this.props.default === undefined ? '' : this.props.default;
           return (
-            <td>
+            <div>
               {this.props.name}:
-              <input name={this.props.name} type='text' defaultValue={defaultValue} onChange={this.paramChangedString}/>
-            </td>
+              <input name={this.props.name} type="text" defaultValue={defaultValue} onChange={this.paramChangedString}/>
+            </div>
           );
         }
     }

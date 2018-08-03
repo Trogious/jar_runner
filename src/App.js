@@ -21,7 +21,7 @@ export default class App extends React.Component {
     this.newpass_url = 'JAR_API_ENDPOINT_NEWPASS';
     this.schedule_url = 'JAR_API_ENDPOINT_SCHEDULE';
     this.params = JSON.parse('JAR_EXEC_PARAMS_CONFIG');
-    // this.params = JSON.parse('{"params":[{"name":"threads","type":"int","min":1,"max":16,"default":8},{"name":"spins","type":"string","allowed":["500k","100m","500m","1b"],"default":"500m"}],"spacing":{"param":":","value":"="}}');
+    // this.params = JSON.parse('{"params":[{"name":"n","type":"string","allowed":["500k","100m","500m","1b"],"default":"500m"},{"name":"threads","type":"int","min":1,"max":16,"default":8},{"name":"variant","type":"string","allowed":["BigBlox","Wolfhunters"],"default":"BigBlox"},{"name":"coinsperbet","type":"int","min":1,"max":100,"default":25}],"spacing":{"param":",","value":"="}}');
   }
 
   fetchJarList() {
@@ -62,14 +62,18 @@ export default class App extends React.Component {
     this.setState({message: m});
   }
 
-  handleSubmitJar = e => {
+  escapeJSON(jsonStr) {
+    return jsonStr.replace(/'/g, "\\'").replace(/"/g, '\\"');
+  }
+
+  handleSubmitJar = (jarName, params) => {
     const auth_data = {
       headers: {
         'Accept': 'application/json',
         'Authorization': this.state.token
       },
       method: 'POST',
-      body: '{"name": "' + e.target.jar.value + '"}'
+      body: '{"name": "' + jarName + '","params":"' + this.escapeJSON(params) + '"}'
     };
     console.log(auth_data);
     let status = 0;
@@ -88,7 +92,6 @@ export default class App extends React.Component {
         }
       })
     .catch(e => console.error(e));
-    e.preventDefault();
   }
 
 
@@ -103,19 +106,25 @@ export default class App extends React.Component {
     } else {
       return (
         <div>
-          <div>
-            <form onSubmit={this.handleSubmitJar}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Artifact</th>
-                    <th colSpan={this.params.params.length}>Parameters</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                {this.state.jars.map((jar, i) => <Jar key={i} name={jar} params={this.params} submit={this.handleSubmitJar} />)}
-              </table>
-            </form>
+          <div className="limiter">
+        		<div className="container-table100">
+        			<div className="wrap-table100">
+      					<div className="table">
+      						<div className="row header">
+      							<div className="cell">
+      								Artifact
+      							</div>
+      							<div className="cell">
+      								Parameters
+      							</div>
+      							<div className="cell">
+      								Action
+      							</div>
+      						</div>
+                  {this.state.jars.map((jar, i) => <Jar key={i} name={jar} params={this.params} submit={this.handleSubmitJar} />)}
+                </div>
+              </div>
+            </div>
           </div>
           <div className="logout">
             <form onSubmit={() => {this.setState({ token: '' });localStorage.setItem('token', '');}}>

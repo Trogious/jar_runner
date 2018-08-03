@@ -1,0 +1,148 @@
+$primary: #f39621;
+$background: #fff;
+
+.limiter {
+  width: 100%;
+  margin: 0 auto;
+}
+
+.container-table100 {
+  width: 100%;
+  min-height: 100vh;
+  background: rgba(lighten($primary,35%), 0.85);
+
+  display: -webkit-box;
+  display: -webkit-flex;
+  display: -moz-box;
+  display: -ms-flexbox;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding: 33px 30px;
+}
+
+.wrap-table100 {
+  width: 960px;
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  display: table;
+  margin: 0;
+}
+
+.row {
+  display: table-row;
+  background: $background;
+}
+
+.row.header {
+  color: #ffffff;
+  background: $primary;
+  display: block;
+}
+
+.cell {
+  display: table-cell;
+}
+
+.row .cell {
+  font-family: Poppins-Regular;
+  font-size: 15px;
+  color: #666666;
+  font-weight: unset !important;
+
+  padding-top: 20px;
+  padding-bottom: 20px;
+}
+
+.cell.cell2 {
+  padding-top: 0;
+  padding-bottom: 10px;
+  border-bottom: 2px solid #f2f2f2;
+  width: 960px !important;
+}
+
+.row.header .cell {
+  font-family: Poppins-Regular;
+  font-size: 18px;
+  color: #fff;
+  line-height: 1.2;
+  font-weight: unset !important;
+
+  padding-top: 19px;
+  padding-bottom: 19px;
+}
+
+.row .cell:nth-child(1) {
+  width: 360px;
+}
+
+.row .cell:nth-child(2) {
+  width: 350px;
+}
+
+.row .cell:nth-child(3) {
+  width: 250px;
+}
+
+.table, .row {
+  width: 100% !important;
+}
+
+.row:hover {
+  background-color: #ececff;
+  cursor: pointer;
+}
+
+.row.rowno:hover {
+  background-color: $background !important;
+}
+
+.row .cell .content {
+  width: inherit;
+  display: block;
+}
+
+.content .param {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  align-content: space-between;
+  margin: 2px;
+  padding: 2px;
+}
+
+.param:hover {
+  border: 1px solid $primary;
+  padding: 1px;
+}
+
+.param .pname {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+}
+
+.param .pvalue {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+.exec {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  align-content: center;
+}
+
+.exec .preview {
+  background-color: #ddd;
+  padding: 5px 5px 5px 5px;
+  font-size: 0.8em;
+}
