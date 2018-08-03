@@ -27,7 +27,7 @@ Parameters:
     Description: Maximum number of concurrently running instances.
   ExecutionParameterConfiguration:
     Type: String
-    Default: '{"params":[{"name":"threads","type":"int","min":1,"max":16,"default":8},{"name":"spins","type":"string","allowed":["500k","100m","500m","1b"],"default":"500m"}],"spacing":{"param":":","value":"="}}'
+    Default: '{"params":[{"name":"n","type":"string","allowed":["500k","100m","500m","1b"],"default":"500m"},{"name":"threads","type":"int","min":1,"max":16,"default":8},{"name":"variant","type":"string","allowed":["BigBlox","Wolfhunters"],"default":"BigBlox"},{"name":"coinsperbet","type":"int","min":1,"max":100,"default":25}],"spacing":{"param":",","value":"="}}'
     Description: Parameter configuration for jar execution.
 Mappings:
   RegionMap:
