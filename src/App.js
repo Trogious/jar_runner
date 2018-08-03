@@ -20,8 +20,8 @@ export default class App extends React.Component {
     this.auth_url = 'JAR_API_ENDPOINT_AUTH';
     this.newpass_url = 'JAR_API_ENDPOINT_NEWPASS';
     this.schedule_url = 'JAR_API_ENDPOINT_SCHEDULE';
-    this.params = JSON.parse('JAR_EXEC_PARAMS_CONFIG');
-    // this.params = JSON.parse('{"params":[{"name":"n","type":"string","allowed":["500k","100m","500m","1b"],"default":"500m"},{"name":"threads","type":"int","min":1,"max":16,"default":8},{"name":"variant","type":"string","allowed":["BigBlox","Wolfhunters"],"default":"BigBlox"},{"name":"coinsperbet","type":"int","min":1,"max":100,"default":25}],"spacing":{"param":",","value":"="}}');
+    // this.params = JSON.parse('JAR_EXEC_PARAMS_CONFIG');
+    this.params = JSON.parse('{"params":[{"name":"n","type":"string","allowed":["500k","100m","500m","1b"],"default":"500m"},{"name":"threads","type":"int","min":1,"max":16,"default":8},{"name":"variant","type":"string","allowed":["BigBlox","Wolfhunters"],"default":"BigBlox"},{"name":"coinsperbet","type":"int","min":1,"max":100,"default":25}],"spacing":{"param":",","value":"="}}');
   }
 
   fetchJarList() {
