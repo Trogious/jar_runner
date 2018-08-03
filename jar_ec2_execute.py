@@ -26,14 +26,14 @@ def compress_results(dir_path):
     return archive
 
 
-def get_param_value(cfg, value, allowed=None):
+def get_param_value(cfg, value):
     val_type = cfg['type']
     if val_type.lower() == 'int':
         return str(int(value))
     elif val_type.lower() == 'string':
         if 'allowed' in cfg.keys():
             found = False
-            for a in allowed:
+            for a in cfg['allowed']:
                 if value == a:
                     found = True
                     break
@@ -52,11 +52,11 @@ def get_params_str():
     i = 0
     for cfg in params_config['params']:
         name = cfg['name']
-        for val in param_values:
-            if name in val.keys():
+        for key in param_values.keys():
+            if name == key:
                 if i > 0:
                     params_str += spacing_param
-                params_str += name + spacing_val + get_param_value(cfg, val[name])
+                params_str += name + spacing_val + get_param_value(cfg, key[name])
                 i += 1
     return params_str
     # return None
@@ -65,9 +65,9 @@ def get_params_str():
 def execute_jar(jar):
     prefix_dir = PREFIX_DIR + jar.replace('.jar', '') + '_' + datetime.datetime.now().isoformat(sep='_')[:19].replace(':', '-') + '/'
     os.mkdir(prefix_dir, 0o700)
+    s3 = boto3.resource('s3')
     with open(prefix_dir + RESULTS_OUT, 'wb') as fo:
         with open(prefix_dir + RESULTS_ERR, 'wb') as fe:
-            s3 = boto3.resource('s3')
             print('downloading')
             s3.meta.client.download_file('BUCKET_NAME_IN', 'jars/' + jar, './' + jar)
             print('executing')
