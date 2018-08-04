@@ -39,9 +39,13 @@ def handler(event, context):
             iam = boto3.client('iam')
             access_keys = iam.create_access_key(UserName=event['ResourceProperties']['OutputPreSigner'])['AccessKey']
             lamb = boto3.client('lambda')
-            lamb.update_function_configuration(FunctionName=event['ResourceProperties']['LambdaNotifyArn'],
-                                               Environment={'Variables': {'JAR_LAMBDA_ACCESS_KEY': access_keys['AccessKeyId'], 'JAR_LAMBDA_SECRET_KEY': access_keys['SecretAccessKey'],
-                                                            'JAR_LAMBDA_REGION': event['ResourceProperties']['RegionName']}})
+            current_config = lamb.get_function_configuration(FunctionName=event['ResourceProperties']['LambdaNotifyArn'])['Environment']
+            env_vars = {'JAR_LAMBDA_ACCESS_KEY': access_keys['AccessKeyId'], 'JAR_LAMBDA_SECRET_KEY': access_keys['SecretAccessKey'],
+                        'JAR_LAMBDA_REGION': event['ResourceProperties']['RegionName']}
+            if 'Variables' in current_config.keys():
+                for env_name in current_config['Variables'].keys():
+                    env_vars[env_name] = current_config['Variables'][env_name]
+            lamb.update_function_configuration(FunctionName=event['ResourceProperties']['LambdaNotifyArn'], Environment={'Variables': env_vars})
             website_in_bucket = event['ResourceProperties']['WebsiteSourceBucket']
             website_in_key = event['ResourceProperties']['WebsiteSourceKey']
             website = s3.get_object(Bucket=website_in_bucket, Key=website_in_key)

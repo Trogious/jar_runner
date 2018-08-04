@@ -848,7 +848,7 @@ Resources:
               -
                 Effect: Allow
                 Action: lambda:UpdateFunctionConfiguration
-                Resource: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+                Resource: !GetAtt LambdaNotifyFunction.Arn
               -
                 Effect: Allow
                 Action: iam:CreateAccessKey
