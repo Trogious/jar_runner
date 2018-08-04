@@ -36,8 +36,7 @@ def handler(event, context):
             param_config = event['ResourceProperties']['ExecParamConfig']['Value']
             logger.info(param_config)
             json.loads(param_config)  # verifies config json format validity
-            iam = boto3.client('iam')
-            access_keys = iam.create_access_key(UserName=event['ResourceProperties']['OutputPreSigner'])['AccessKey']
+            access_keys = boto3.client('iam').create_access_key(UserName=event['ResourceProperties']['OutputPreSigner'])['AccessKey']
             lamb = boto3.client('lambda')
             current_config = lamb.get_function_configuration(FunctionName=event['ResourceProperties']['LambdaNotifyArn'])['Environment']
             env_vars = {'JAR_LAMBDA_ACCESS_KEY': access_keys['AccessKeyId'], 'JAR_LAMBDA_SECRET_KEY': access_keys['SecretAccessKey'],

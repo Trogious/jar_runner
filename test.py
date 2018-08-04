@@ -8,6 +8,7 @@ import io
 import base64
 from botocore.client import Config
 import requests
+import sys, datetime, hashlib, hmac, urllib
 
 
 logger = logging.getLogger()
@@ -57,34 +58,3 @@ def get_instances_count(ec2, stack_name):
     except Exception as e:
         print('Error describing instances: %s\n' % str(e))
     return count
-
-
-logger = logging.getLogger()
-logger.setLevel(logging.INFO)
-
-
-def get_session():
-    access_key = os.getenv('JAR_LAMBDA_ACCESS_KEY')
-    secret_key = os.getenv('JAR_LAMBDA_SECRET_KEY')
-    if None in [access_key, secret_key]:
-        raise Exception('KEYs not set')
-    session = boto3.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
-    return session
-
-
-def handler(event, context):
-    bucket = 'x'
-    key = 'y'
-    try:
-        session = get_session()
-        s3 = session.client('s3', config=boto3.session.Config(signature_version='s3v4'))
-        url = s3.generate_presigned_url(ClientMethod='get_object', Params={'Bucket': bucket, 'Key': key}, ExpiresIn=3600)
-        print(url)
-        resp = requests.get(url)
-        print(resp)
-    except Exception as e:
-        print(e)
-    return key
-
-
-handler(0, 0)

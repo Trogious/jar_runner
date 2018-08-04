@@ -847,7 +847,9 @@ Resources:
             Statement:
               -
                 Effect: Allow
-                Action: lambda:UpdateFunctionConfiguration
+                Action:
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:GetFunctionConfiguration
                 Resource: !GetAtt LambdaNotifyFunction.Arn
               -
                 Effect: Allow
