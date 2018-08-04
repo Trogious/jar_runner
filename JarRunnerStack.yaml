@@ -103,6 +103,11 @@ Resources:
                 Resource: !Sub
                   - ${OutputBucket}/*
                   - OutputBucket: !GetAtt OutputBucket.Arn
+  OutputPreSigner:
+    Type: AWS::IAM::User
+    Properties:
+      Groups:
+        - !Ref OutputBucketUsers
   ScheduleQueue:
     Type: AWS::SQS::Queue
   NotifyTopic:
@@ -773,10 +778,12 @@ Resources:
       InstanceId: !Ref AMICreatorInstance
       OutputBucket: !Ref OutputBucket
       LambdaNotifyArn: !GetAtt LambdaNotifyFunction.Arn
-      StackName: !Sub ${AWS::StackName}
+      # StackName: !Sub ${AWS::StackName}
+      RegionName: !Sub ${AWS::Region}
       WebsiteBucket: !Ref WebsiteBucket
       WebsiteSourceBucket: !Ref BuildsSourceBucket
       WebsiteSourceKey: !Sub ${BuildVersion}/jar_website.zip
+      OutputPreSigner: !Ref OutputPreSigner
       ExecParamConfig:
         Name: JAR_EXEC_PARAMS_CONFIG
         Value: !Ref ExecutionParameterConfiguration
@@ -833,6 +840,22 @@ Resources:
                 Resource: !Sub
                   - ${WebsiteBucket}/*
                   - WebsiteBucket: !GetAtt WebsiteBucket.Arn
+        -
+          PolicyName: UpdateLambdaConfig
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: lambda:UpdateFunctionConfiguration
+                Resource: !Sub arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:*
+              -
+                Effect: Allow
+                Action: iam:CreateAccessKey
+                Resource: !Join
+                  - ''
+                  - - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:user/
+                  - - !Ref OutputPreSigner
   LambdaWebsiteFunction:
     Type: AWS::Lambda::Function
     Properties:

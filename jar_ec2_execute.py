@@ -56,7 +56,7 @@ def get_params_str():
             if name == key:
                 if i > 0:
                     params_str += spacing_param
-                params_str += name + spacing_val + get_param_value(cfg, key[name])
+                params_str += name + spacing_val + get_param_value(cfg, param_values[name])
                 i += 1
     return params_str
     # return None

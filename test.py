@@ -68,16 +68,16 @@ def get_session():
     secret_key = os.getenv('JAR_LAMBDA_SECRET_KEY')
     if None in [access_key, secret_key]:
         raise Exception('KEYs not set')
-    session = boto3.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name='eu-central-1')
+    session = boto3.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key)
     return session
 
 
 def handler(event, context):
-    key = 'x'
-    bucket = 'y'
+    bucket = 'x'
+    key = 'y'
     try:
         session = get_session()
-        s3 = session.client('s3', config=boto3.session.Config(signature_version='s3v4'), region_name='eu-central-1')
+        s3 = session.client('s3', config=boto3.session.Config(signature_version='s3v4'))
         url = s3.generate_presigned_url(ClientMethod='get_object', Params={'Bucket': bucket, 'Key': key}, ExpiresIn=3600)
         print(url)
         resp = requests.get(url)

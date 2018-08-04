@@ -10,9 +10,10 @@ logger.setLevel(logging.INFO)
 def get_session():
     access_key = os.getenv('JAR_LAMBDA_ACCESS_KEY')
     secret_key = os.getenv('JAR_LAMBDA_SECRET_KEY')
-    if None in [access_key, secret_key]:
+    region = os.getenv('JAR_LAMBDA_REGION')
+    if None in [access_key, secret_key, region]:
         raise Exception('KEYs not set')
-    session = boto3.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key, aws_session_token='jar_lambda_notify')
+    session = boto3.Session(aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=region)
     return session
 
 

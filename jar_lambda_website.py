@@ -33,12 +33,18 @@ def handler(event, context):
             logger.info('WebsiteBucket emptied')
             success({'Msg': 'WebsiteBucket emptied'})
         elif event['RequestType'] in ['Create', 'Update']:
+            param_config = event['ResourceProperties']['ExecParamConfig']['Value']
+            logger.info(param_config)
+            json.loads(param_config)  # verifies config json format validity
+            iam = boto3.client('iam')
+            access_keys = iam.create_access_key(UserName=event['ResourceProperties']['ApiEndpoints'])['AccessKey']
+            lamb = boto3.client('lambda')
+            lamb.update_function_configuration(FunctionName=event['ResourceProperties']['ExecParamConfig']['LambdaNotifyArn'],
+                                               Environment={'Variables': {'JAR_LAMBDA_ACCESS_KEY': access_keys['AccessKeyId'], 'JAR_LAMBDA_SECRET_KEY': access_keys['SecretAccessKey'],
+                                                            'JAR_LAMBDA_REGION': event['ResourceProperties']['RegionName']}})
             website_in_bucket = event['ResourceProperties']['WebsiteSourceBucket']
             website_in_key = event['ResourceProperties']['WebsiteSourceKey']
             website = s3.get_object(Bucket=website_in_bucket, Key=website_in_key)
-            param_config = event['ResourceProperties']['ExecParamConfig']['Value']
-            json.loads(param_config)  # verifies config json format validity
-            logger.info(param_config)
             zip_buf = io.BytesIO(website['Body'].read())
             with zipfile.ZipFile(zip_buf, 'r') as zip_file:
                 for f_name in zip_file.namelist():
