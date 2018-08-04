@@ -37,9 +37,9 @@ def handler(event, context):
             logger.info(param_config)
             json.loads(param_config)  # verifies config json format validity
             iam = boto3.client('iam')
-            access_keys = iam.create_access_key(UserName=event['ResourceProperties']['ApiEndpoints'])['AccessKey']
+            access_keys = iam.create_access_key(UserName=event['ResourceProperties']['OutputPreSigner'])['AccessKey']
             lamb = boto3.client('lambda')
-            lamb.update_function_configuration(FunctionName=event['ResourceProperties']['ExecParamConfig']['LambdaNotifyArn'],
+            lamb.update_function_configuration(FunctionName=event['ResourceProperties']['LambdaNotifyArn'],
                                                Environment={'Variables': {'JAR_LAMBDA_ACCESS_KEY': access_keys['AccessKeyId'], 'JAR_LAMBDA_SECRET_KEY': access_keys['SecretAccessKey'],
                                                             'JAR_LAMBDA_REGION': event['ResourceProperties']['RegionName']}})
             website_in_bucket = event['ResourceProperties']['WebsiteSourceBucket']

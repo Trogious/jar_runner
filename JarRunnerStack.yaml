@@ -779,11 +779,11 @@ Resources:
       OutputBucket: !Ref OutputBucket
       LambdaNotifyArn: !GetAtt LambdaNotifyFunction.Arn
       # StackName: !Sub ${AWS::StackName}
-      RegionName: !Sub ${AWS::Region}
       WebsiteBucket: !Ref WebsiteBucket
       WebsiteSourceBucket: !Ref BuildsSourceBucket
       WebsiteSourceKey: !Sub ${BuildVersion}/jar_website.zip
       OutputPreSigner: !Ref OutputPreSigner
+      RegionName: !Sub ${AWS::Region}
       ExecParamConfig:
         Name: JAR_EXEC_PARAMS_CONFIG
         Value: !Ref ExecutionParameterConfiguration
@@ -855,7 +855,7 @@ Resources:
                 Resource: !Join
                   - ''
                   - - !Sub arn:${AWS::Partition}:iam::${AWS::AccountId}:user/
-                  - - !Ref OutputPreSigner
+                    - !Ref OutputPreSigner
   LambdaWebsiteFunction:
     Type: AWS::Lambda::Function
     Properties:
