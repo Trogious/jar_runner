@@ -8,7 +8,7 @@ import io
 import base64
 from botocore.client import Config
 import requests
-import sys, datetime, hashlib, hmac, urllib
+import sys, datetime, hashlib, hmac, urllib, time
 
 
 logger = logging.getLogger()
@@ -58,3 +58,46 @@ def get_instances_count(ec2, stack_name):
     except Exception as e:
         print('Error describing instances: %s\n' % str(e))
     return count
+
+
+class CloudWatchLogger:
+    def __init__(self, group_name, stream_name):
+        self.logs = None
+        self.stream = None
+        self.sequence_token = None
+        self.group_name = group_name
+        self.stream_name = stream_name
+
+    def is_enabled(self):
+        if self.stream is None:
+            try:
+                self.logs = boto3.client('logs', aws_access_key_id='', aws_secret_access_key='')
+                self.stream = self.logs.create_log_stream(logGroupName=self.group_name, logStreamName=self.stream_name)
+            except Exception:
+                if self.logs is not None:
+                    try:
+                        self.stream_name = self.stream_name + '_' + str(self.get_current_timestamp())
+                        self.stream = self.logs.create_log_stream(logGroupName=self.group_name, logStreamName=self.stream_name)
+                    except Exception:
+                        pass
+        return self.stream is not None
+
+    def get_current_timestamp(self):
+        return int(round(time.time() * 1000.0))
+
+    def log(self, msg):
+        if self.is_enabled():
+            try:
+                if self.sequence_token is None:
+                    self.sequence_token = self.logs.put_log_events(logGroupName=self.group_name, logStreamName=self.stream_name, logEvents=[{'timestamp': self.get_current_timestamp(), 'message': msg}])['nextSequenceToken']
+                else:
+                    self.sequence_token = self.logs.put_log_events(logGroupName=self.group_name, logStreamName=self.stream_name, logEvents=[{'timestamp': self.get_current_timestamp(), 'message': msg}], sequenceToken=self.sequence_token)['nextSequenceToken']
+            except Exception:
+                pass
+
+
+if len(sys.argv) > 1:
+    logcw = CloudWatchLogger('testLG', 'testLS')
+    for msg in sys.argv[1:]:
+        print(msg)
+        logcw.log(msg)

@@ -28,7 +28,7 @@ def send_to_queue(queue_name, jar_name):
     return queue.send_message(MessageBody='{"name":"' + jar_name + '"}')
 
 
-def get_user_data(bucket_in, bucket_out, queue_name, region, params_config, param_values):
+def get_user_data(bucket_in, bucket_out, queue_name, region, params_config, param_values, log_group):
     ENCODING = 'utf8'
     user_data = '#!/bin/sh -\n'
     with open('./jar_ec2_execute.py', 'rb') as f:
@@ -39,6 +39,7 @@ def get_user_data(bucket_in, bucket_out, queue_name, region, params_config, para
         executor = executor.replace(b'REGION', region.encode(ENCODING))
         executor = executor.replace(b'PARAMS_CONFIG', params_config.encode(ENCODING))
         executor = executor.replace(b'PARAM_VALUES', param_values.encode(ENCODING))
+        executor = executor.replace(b'LOG_GROUP', log_group.encode(ENCODING))
         executor = base64.b64encode(executor).decode(ENCODING)
         user_data += "echo '" + executor + "' | base64 -d - > /home/ec2-user/jar_ec2_execute.py\n"
     user_data += 'chmod 700 /home/ec2-user/jar_ec2_execute.py\n'
@@ -62,11 +63,11 @@ def get_instances_count(ec2, stack_name):
     return count
 
 
-def launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, bucket_in, bucket_out, queue_name, region, instance_limit, params_config, param_values):
+def launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, bucket_in, bucket_out, queue_name, region, instance_limit, params_config, param_values, log_group):
     ec2 = boto3.client('ec2')
     if get_instances_count(ec2, stack_name) < instance_limit:
         resp = ec2.run_instances(ImageId=ami_id, InstanceType=instance_type, MinCount=1, MaxCount=1, InstanceInitiatedShutdownBehavior='terminate',  # KeyName='MyEC3Key',  # NetworkInterfaces=[{'AssociatePublicIpAddress': False, 'DeviceIndex': 0}],
-                                 IamInstanceProfile={'Arn': instance_profile_arn}, UserData=get_user_data(bucket_in, bucket_out, queue_name, region, params_config, param_values),
+                                 IamInstanceProfile={'Arn': instance_profile_arn}, UserData=get_user_data(bucket_in, bucket_out, queue_name, region, params_config, param_values, log_group),
                                  TagSpecifications=[{'ResourceType': 'instance', 'Tags': [{'Key': 'Name', 'Value': 'JarExecutor-' + stack_name}]}])
         return resp['Instances'][0]['InstanceId']
     else:
@@ -85,6 +86,7 @@ def handler(event, context):
     region = os.getenv('JAR_LAMBDA_REGION')
     instance_limit = int(os.getenv('JAR_LAMBDA_INSTANCE_LIMIT', 5))
     params_config = os.getenv('JAR_LAMBDA_PARAMS_CONFIG')
+    log_group = os.getenv('JAR_LAMBDA_LOG_GROUP')
     if bucket_in is None:
         resp = get_error_resp('BUCKET not provided')
     elif queue_name is None:
@@ -105,6 +107,8 @@ def handler(event, context):
         resp = get_error_resp('LIMIT not provided')
     elif params_config is None:
         resp = get_error_resp('PARAMS_CONFIG not provided')
+    elif log_group is None:
+        resp = get_error_resp('LOG_GROUP not provided')
     elif event is not None and 'body' in event.keys():
         try:
             json.loads(params_config)  # verifies config json format validity
@@ -119,7 +123,7 @@ def handler(event, context):
                 if key['Key'].endswith('.jar'):
                     if key['Key'].replace('jars/', '') == jar_name:
                         queue_resp = send_to_queue(queue_name, jar_name)
-                        instance_id = launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, bucket_in, bucket_out, queue_name, region, instance_limit, params_config, param_values)
+                        instance_id = launch_instance(ami_id, instance_type, instance_profile_arn, stack_name, bucket_in, bucket_out, queue_name, region, instance_limit, params_config, param_values, log_group)
                         resp = response({'status': 'scheduled ' + queue_resp.get('MessageId') + ' ' + instance_id}, 200)
                         break
         except Exception as e:

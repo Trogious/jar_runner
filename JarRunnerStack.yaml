@@ -103,6 +103,23 @@ Resources:
                 Resource: !Sub
                   - ${OutputBucket}/*
                   - OutputBucket: !GetAtt OutputBucket.Arn
+        -
+          PolicyName: Logs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - logs:GetLogEvents
+                  - logs:DescribeLogStreams
+                Resource:
+                  - !Sub
+                    - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${JarExecutorLogGroup}
+                    - JarExecutorLogGroup: !Ref JarExecutorLogGroup
+                  - !Sub
+                    - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${JarExecutorLogGroup}:log-stream:*
+                    - JarExecutorLogGroup: !Ref JarExecutorLogGroup
   OutputPreSigner:
     Type: AWS::IAM::User
     Properties:
@@ -194,6 +211,7 @@ Resources:
           JAR_LAMBDA_REGION: !Sub ${AWS::Region}
           JAR_LAMBDA_INSTANCE_LIMIT: !Ref ExecutorInstanceLimit
           JAR_LAMBDA_PARAMS_CONFIG: !Ref ExecutionParameterConfiguration
+          JAR_LAMBDA_LOG_GROUP: !Ref JarExecutorLogGroup
       Code:
         S3Bucket: !Ref BuildsSourceBucket
         S3Key: !Sub ${BuildVersion}/jar_lambda_schedule.zip
@@ -1003,11 +1021,37 @@ Resources:
                   - sqs:DeleteMessage
                   - sqs:GetQueueUrl
                 Resource: !GetAtt ScheduleQueue.Arn
+        -
+          PolicyName: Logs
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - logs:DescribeLogStreams
+                Resource:
+                  - !Sub
+                    - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${JarExecutorLogGroup}
+                    - JarExecutorLogGroup: !Ref JarExecutorLogGroup
+                  - !Sub
+                    - arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:${JarExecutorLogGroup}:log-stream:*
+                    - JarExecutorLogGroup: !Ref JarExecutorLogGroup
   JarExecutorInstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Roles:
         - !Ref JarExecutorRole
+  JarExecutorLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      RetentionInDays: 7
+  # JarExecutorLogStream:
+  #   Type: AWS::Logs::LogStream
+  #   Properties:
+  #     LogGroupName: !Ref JarExecutorLogGroup
 Outputs:
   InputBucketName:
     Value: !Ref InputBucket
