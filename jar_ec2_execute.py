@@ -135,11 +135,11 @@ def execute_jar(jar):
     results_archive = compress_results(prefix_dir)
     logger.log('uploading: ' + results_archive)
     s3.meta.client.upload_file(results_archive, 'BUCKET_NAME_OUT', os.path.basename(results_archive), ExtraArgs={'ContentType': 'application/gzip'})
-    logger.log('uploaded, execution completed in %d' % (datetime.datetime.now()-time_start).total_seconds())
+    logger.log('uploaded, execution completed in %d seconds' % (datetime.datetime.now()-time_start).total_seconds())
 
 
 def main():
-    logger = CloudWatchLogger('LOG_GROUP', 'jar_ec2jar_ec2_execute_' + str(get_current_timestamp()))
+    logger = CloudWatchLogger('LOG_GROUP', 'jar_ec2_execute_' + str(get_current_timestamp()))
     sqs = boto3.resource('sqs', region_name='REGION')
     try:
         queue = sqs.get_queue_by_name(QueueName='QUEUE_NAME')
