@@ -94,7 +94,7 @@ def execute_jar(jar):
     results_archive = compress_results(prefix_dir)
     print(results_archive)
     print('uploading')
-    s3.meta.client.upload_file(results_archive, 'BUCKET_NAME_OUT', os.path.basename(results_archive))
+    s3.meta.client.upload_file(results_archive, 'BUCKET_NAME_OUT', os.path.basename(results_archive), ExtraArgs={'ContentType': 'application/gzip'})
     print('uploaded')
 
 
