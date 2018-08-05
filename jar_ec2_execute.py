@@ -8,11 +8,12 @@ import tarfile
 import time
 
 PREFIX_DIR = './results_'
-RESULTS_OUT = 'results_out.txt'
-RESULTS_ERR = 'results_diag.txt'
+RESULTS_OUT = 'standard_output.txt'
+RESULTS_ERR = 'diagnostic_output.txt'
+logger = None
 
 
-def get_current_timestamp(self):
+def get_current_timestamp():
     return int(round(time.time() * 1000.0))
 
 
@@ -27,7 +28,7 @@ class CloudWatchLogger:
     def is_enabled(self):
         if self.stream is None:
             try:
-                self.logs = boto3.client('logs')
+                self.logs = boto3.client('logs', region_name='REGION')
                 self.stream = self.logs.create_log_stream(logGroupName=self.group_name, logStreamName=self.stream_name)
             except Exception:
                 if self.logs is not None:
@@ -101,13 +102,15 @@ def get_params_str():
 
 
 def execute_jar(jar):
+    global logger
     time_start = datetime.datetime.now()
     date_stamp = time_start.isoformat(sep='_')[:19].replace(':', '-')
     jar_stamped = jar.replace('.jar', '') + '_' + date_stamp
     prefix_dir = PREFIX_DIR + jar_stamped + '/'
+    logger = CloudWatchLogger('LOG_GROUP', jar_stamped)
+    logger.log('processing: ' + jar)
     os.mkdir(prefix_dir, 0o700)
     s3 = boto3.resource('s3')
-    logger = CloudWatchLogger('LOG_GROUP', jar_stamped)
     with open(prefix_dir + RESULTS_OUT, 'wb') as fo:
         with open(prefix_dir + RESULTS_ERR, 'wb') as fe:
             logger.log('downloading')
@@ -139,6 +142,7 @@ def execute_jar(jar):
 
 
 def main():
+    global logger
     logger = CloudWatchLogger('LOG_GROUP', 'jar_ec2_execute_' + str(get_current_timestamp()))
     sqs = boto3.resource('sqs', region_name='REGION')
     try:
