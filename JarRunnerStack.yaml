@@ -859,6 +859,20 @@ Resources:
                   - ${WebsiteBucket}/*
                   - WebsiteBucket: !GetAtt WebsiteBucket.Arn
         -
+          PolicyName: WebsiteSourceGet
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              -
+                Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub arn:aws:s3:::${BuildsSourceBucket}
+              -
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::${BuildsSourceBucket}/*
+        -
           PolicyName: UpdateLambdaConfig
           PolicyDocument:
             Version: 2012-10-17
