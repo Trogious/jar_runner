@@ -41,7 +41,7 @@ Users of the system, that will be able to schedule JAR executions through Web UI
 To be able to get nofitications on completed executions, subscriptions in SNS have to be created. The easiest is to create email subscription in the `NotifyTopic` SNS topic. See CloudFormation's stack outputs section.
 
 #### Access to input bucket
-This is the bucket the jars will be stored and read from. JAR Runner reads the jar from the `jars/` directory of this bucket. Read-write access can be given to people who will be populating this bucket with jars possible to execute. This can be accomplished by creating an IAM user and adding that user to the `InputBucketGroup` group listed in CloudFormation's stack outputs section.
+This is the bucket the jars will be stored and read from. JAR Runner reads jars from the `jars/` directory of this bucket. Read-write access can be given to people who will be populating this bucket with jars possible to execute. This can be accomplished by creating an IAM user and adding that user to the `InputBucketGroup` group listed in CloudFormation's stack outputs section.
 
 #### Access to output bucket
 This bucket contains gzipped output of executions. People who need access to these outputs need read-only access to this bucket. This can be accomplished by creating an IAM user and adding that user to the `OutputBucketGroup` group listed in CloudFormation's stack outputs section.
