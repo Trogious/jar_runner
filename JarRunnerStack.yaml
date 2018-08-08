@@ -1,4 +1,4 @@
-Description: Deploys entire environment for JarRunner.
+Description: Deploys the entire environment for JarRunner.
 Parameters:
   BuildsSourceBucket:
     Type: String
