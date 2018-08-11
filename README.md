@@ -24,12 +24,23 @@ The stack can be deployed in any region, however it needs to be in the same regi
 
 #### Outputs
 ##### InputBucketName
+Name of the S3 bucket which holds jars that can be executed. For jars to be visible, they all need to be put into `jars/` folder/prefix in the bucket. All files outside of that folde won't be visible by JAR Runner.
 ##### OutputBucketName
+This is the S3 bucket name where the results of the execution will be stored. JAR Runner captures standard and diagnostic output from jars being executed and stores them in this bucket. The results will be in `tgz` format and will be named this way:
+```
+results_<jar_file_name>_<date>-<time>.tgz
+```
+where date is in the format `YYYY-mm-dd` and time in the format `HH-MM-SS`. The `jar_file_name` is the file name without the trailing `.jar` extension.
 ##### InputBucketGroup
+Group that provides read-write access to `InputBucketName`. Add here all your IAM users who will be responsible for adding and managing jars for JAR Runner.
 ##### OutputBucketGroup
+Group that provides read-only access to `OutputBucketName`. Add here all your IAM users who have need to access outputs from executions of jars.
 ##### WebsiteURL
+This is the URL under which the web interface for JAR runner is present. Give this to all who will be using JAR Runner to execute jars.
 ##### NotifyTopic
+This is the SNS topic that is being published to when jar execution finishes. Subscribe here all the users who want to receive notifications (e.g. emails) for completed executions. The notification will contain an S3 pre-signed URL of the results archive, which is stored in `OutputBucketName`. This topic send notofication of all executions to all the subscribers, regardless of who scheduled those executions. Subscriptions can be more than emails and therefore this can be linked to external systems for various purposes like automation.
 ##### UserPool
+This Cognito user pool stores users (and their passwords) who will be allowed to schedule executions. This credentials are used to log in to the JAR Runner web interface and schedule jar executions from there.
 
 ### Manual configuration
 After the stack deploys successfully, the following needs to be configured.
